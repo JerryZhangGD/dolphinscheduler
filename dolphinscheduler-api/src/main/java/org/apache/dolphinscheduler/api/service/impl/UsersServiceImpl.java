@@ -36,6 +36,7 @@ import org.apache.dolphinscheduler.common.utils.EncryptionUtils;
 import org.apache.dolphinscheduler.dao.entity.AlertGroup;
 import org.apache.dolphinscheduler.dao.entity.DatasourceUser;
 import org.apache.dolphinscheduler.dao.entity.K8sNamespaceUser;
+import org.apache.dolphinscheduler.dao.entity.PlatformTenantUser;
 import org.apache.dolphinscheduler.dao.entity.Project;
 import org.apache.dolphinscheduler.dao.entity.ProjectUser;
 import org.apache.dolphinscheduler.dao.entity.Tenant;
@@ -166,14 +167,15 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
         }
 
         User user = createUser(userName, userPassword, email, tenantId, phone, queue, state);
-        if (CollectionUtils.isNotEmpty(platformTenantIds)) {
-            platformTenantService.grantUserTenants(loginUser, user.getId(), platformTenantIds);
+        if (isSystemAdmin(loginUser)) {
+            if (CollectionUtils.isNotEmpty(platformTenantIds)) {
+                platformTenantService.grantUserTenants(loginUser, user.getId(), platformTenantIds);
+            } else {
+                platformTenantService.grantUserTenants(loginUser, user.getId(),
+                        Collections.singleton(getCurrentPlatformTenantId(loginUser)));
+            }
         } else {
-            Integer currentPlatformTenantId = loginUser.getCurrentPlatformTenantId() == null
-                    ? Constants.DEFAULT_PLATFORM_TENANT_ID
-                    : loginUser.getCurrentPlatformTenantId();
-            platformTenantService.grantUserTenants(loginUser, user.getId(),
-                    Collections.singleton(currentPlatformTenantId));
+            grantUserToCurrentPlatformTenant(loginUser, user.getId());
         }
         log.info("User is created and id is {}.", user.getId());
         return user;
@@ -335,12 +337,14 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
 
         Page<User> page = new Page<>(pageNo, pageSize);
 
-        IPage<User> scheduleList = userDao.queryUserPaging(page, searchVal);
+        IPage<User> scheduleList = isSystemAdmin(loginUser)
+                ? userDao.queryUserPaging(page, searchVal)
+                : userDao.queryUserPagingByPlatformTenantId(page, searchVal, getCurrentPlatformTenantId(loginUser));
 
         PageInfo<User> pageInfo = new PageInfo<>(pageNo, pageSize);
         pageInfo.setTotal((int) scheduleList.getTotal());
         List<User> users = scheduleList.getRecords();
-        fillPlatformTenants(users);
+        fillPlatformTenants(users, loginUser);
         pageInfo.setTotalList(users);
         result.setData(pageInfo);
         putMsg(result, Status.SUCCESS);
@@ -401,6 +405,7 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
         if (user == null) {
             throw new ServiceException(Status.USER_NOT_EXIST, userId);
         }
+        checkUserInCurrentPlatformTenant(loginUser, userId);
 
         // non-admin should not modify tenantId and queue
         if (!isAdmin(loginUser)) {
@@ -465,11 +470,14 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
         if (!userDao.updateById(user)) {
             throw new ServiceException(Status.UPDATE_USER_ERROR);
         }
-        if (platformTenantIds != null) {
-            if (!isAdmin(loginUser)) {
-                throw new ServiceException(Status.USER_NO_OPERATION_PERM);
+        if (isSystemAdmin(loginUser)) {
+            if (platformTenantIds != null) {
+                platformTenantService.grantUserTenants(loginUser, userId, platformTenantIds);
             }
-            platformTenantService.grantUserTenants(loginUser, userId, platformTenantIds);
+        } else if (Boolean.TRUE.equals(loginUser.getCurrentPlatformTenantAdmin())) {
+            platformTenantService.bindUserToCurrentTenant(loginUser, userId);
+        } else if (platformTenantIds != null) {
+            throw new ServiceException(Status.USER_NO_OPERATION_PERM);
         }
         return user;
     }
@@ -497,6 +505,7 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
             log.error("User does not exist, userId:{}.", id);
             throw new ServiceException(Status.USER_NOT_EXIST, id);
         }
+        checkUserInCurrentPlatformTenant(loginUser, id);
         // check if is a project owner
         List<Project> projects = projectDao.queryProjectCreatedByUser(id);
         if (CollectionUtils.isNotEmpty(projects)) {
@@ -854,8 +863,10 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
             log.warn("Only admin can query all general users.");
             throw new ServiceException(Status.USER_NO_OPERATION_PERM);
         }
-        List<User> users = userDao.queryAllGeneralUser();
-        fillPlatformTenants(users);
+        List<User> users = isSystemAdmin(loginUser)
+                ? userDao.queryAllGeneralUser()
+                : userDao.queryAllGeneralUserByPlatformTenantId(getCurrentPlatformTenantId(loginUser));
+        fillPlatformTenants(users, loginUser);
         return users;
     }
 
@@ -871,17 +882,25 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
         if (!canOperatorPermissions(loginUser, null, AuthorizationType.ACCESS_TOKEN, USER_MANAGER)) {
             throw new ServiceException(Status.USER_NO_OPERATION_PERM);
         }
-        List<User> users = userDao.queryEnabledUsers();
-        fillPlatformTenants(users);
+        List<User> users = isSystemAdmin(loginUser)
+                ? userDao.queryEnabledUsers()
+                : Boolean.TRUE.equals(loginUser.getCurrentPlatformTenantAdmin())
+                        ? userDao.queryEnabledUsersByPlatformTenantId(getCurrentPlatformTenantId(loginUser))
+                        : userDao.queryEnabledUsers();
+        fillPlatformTenants(users, loginUser);
         return users;
     }
 
     private void fillPlatformTenants(List<User> users) {
+        fillPlatformTenants(users, null);
+    }
+
+    private void fillPlatformTenants(List<User> users, User currentUser) {
         if (CollectionUtils.isEmpty(users)) {
             return;
         }
         for (User user : users) {
-            fillPlatformTenants(user, user);
+            fillPlatformTenants(user, currentUser == null ? user : currentUser);
         }
     }
 
@@ -890,9 +909,53 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
             return;
         }
         user.setPlatformTenants(platformTenantService.queryTenantListByUserId(user.getId()));
-        user.setCurrentPlatformTenantId(currentUser.getCurrentPlatformTenantId());
+        if (currentUser == null) {
+            return;
+        }
+        Integer currentPlatformTenantId = currentUser.getCurrentPlatformTenantId();
+        user.setCurrentPlatformTenantId(currentPlatformTenantId);
         user.setCurrentPlatformTenantCode(currentUser.getCurrentPlatformTenantCode());
         user.setCurrentPlatformTenantName(currentUser.getCurrentPlatformTenantName());
+        user.setCurrentPlatformTenantAdmin(isPlatformTenantAdmin(user.getId(), currentPlatformTenantId));
+    }
+
+    private void checkUserInCurrentPlatformTenant(User loginUser, int userId) {
+        if (isSystemAdmin(loginUser) || !Boolean.TRUE.equals(loginUser.getCurrentPlatformTenantAdmin())) {
+            return;
+        }
+        if (!platformTenantUserDao.relationExists(userId, getCurrentPlatformTenantId(loginUser))) {
+            throw new ServiceException(Status.USER_NO_OPERATION_PERM);
+        }
+    }
+
+    private void grantUserToCurrentPlatformTenant(User loginUser, int userId) {
+        Integer currentPlatformTenantId = getCurrentPlatformTenantId(loginUser);
+        Set<Integer> removedTenantIds = platformTenantUserDao.queryByUserId(userId)
+                .stream()
+                .map(PlatformTenantUser::getPlatformTenantId)
+                .filter(platformTenantId -> !Objects.equals(platformTenantId, currentPlatformTenantId))
+                .collect(Collectors.toSet());
+        platformTenantUserDao.deleteByUserIdAndTenantIds(userId, removedTenantIds);
+        platformTenantService.bindUserToCurrentTenant(loginUser, userId);
+    }
+
+    private boolean isPlatformTenantAdmin(Integer userId, Integer platformTenantId) {
+        if (userId == null || platformTenantId == null) {
+            return false;
+        }
+        PlatformTenantUser relation = platformTenantUserDao.queryByUserIdAndPlatformTenantId(userId, platformTenantId);
+        return relation != null && Objects.equals(relation.getAdminFlag(), 1);
+    }
+
+    private boolean isSystemAdmin(User user) {
+        return user != null && user.getUserType() == UserType.ADMIN_USER;
+    }
+
+    private Integer getCurrentPlatformTenantId(User user) {
+        if (user == null || user.getCurrentPlatformTenantId() == null) {
+            return Constants.DEFAULT_PLATFORM_TENANT_ID;
+        }
+        return user.getCurrentPlatformTenantId();
     }
 
     /**

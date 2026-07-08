@@ -26,6 +26,7 @@ export default {
   create_time: 'Create Time',
   update_time: 'Update Time',
   administrator: 'Administrator',
+  platform_tenant_administrator: 'Platform Tenant Administrator',
   ordinary_user: 'Ordinary User',
   edit_profile: 'Edit Profile',
   username_tips: 'Please enter your username',

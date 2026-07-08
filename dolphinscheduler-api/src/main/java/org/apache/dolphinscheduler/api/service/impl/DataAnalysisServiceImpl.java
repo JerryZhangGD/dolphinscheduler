@@ -28,7 +28,6 @@ import org.apache.dolphinscheduler.api.vo.WorkflowDefinitionCountVO;
 import org.apache.dolphinscheduler.api.vo.WorkflowInstanceCountVO;
 import org.apache.dolphinscheduler.common.enums.AuthorizationType;
 import org.apache.dolphinscheduler.common.enums.CommandType;
-import org.apache.dolphinscheduler.common.enums.UserType;
 import org.apache.dolphinscheduler.dao.entity.Command;
 import org.apache.dolphinscheduler.dao.entity.CommandCount;
 import org.apache.dolphinscheduler.dao.entity.ErrorCommand;
@@ -209,7 +208,7 @@ public class DataAnalysisServiceImpl extends BaseServiceImpl implements DataAnal
     @Override
     public PageInfo<Command> listPendingCommands(User loginUser, Long projectCode, Integer pageNo, Integer pageSize) {
         Page<Command> page = new Page<>(pageNo, pageSize);
-        if (loginUser.getUserType().equals(UserType.ADMIN_USER)) {
+        if (isAdmin(loginUser)) {
             IPage<Command> commandIPage = commandMapper.queryCommandPage(page);
             return PageInfo.of(commandIPage);
         }
@@ -228,7 +227,7 @@ public class DataAnalysisServiceImpl extends BaseServiceImpl implements DataAnal
     @Override
     public PageInfo<ErrorCommand> listErrorCommand(User loginUser, Long projectCode, Integer pageNo, Integer pageSize) {
         Page<ErrorCommand> page = new Page<>(pageNo, pageSize);
-        if (loginUser.getUserType().equals(UserType.ADMIN_USER)) {
+        if (isAdmin(loginUser)) {
             IPage<ErrorCommand> commandIPage = errorCommandMapper.queryErrorCommandPage(page);
             return PageInfo.of(commandIPage);
         }

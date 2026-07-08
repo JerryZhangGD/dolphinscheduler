@@ -24,6 +24,7 @@ import {
   NInput,
   NPagination,
   NPopconfirm,
+  NSelect,
   NSpace
 } from 'naive-ui'
 import Card from '@/components/card'
@@ -35,14 +36,21 @@ import {
   queryPlatformTenantListPaging,
   updatePlatformTenant
 } from '@/service/modules/platform-tenants'
+import { listAll } from '@/service/modules/users'
 
 interface PlatformTenantRow {
   id: number
   tenantCode: string
   tenantName: string
   description?: string
+  adminUserIds?: number[]
   createTime?: string
   updateTime?: string
+}
+
+interface UserOption {
+  label: string
+  value: number
 }
 
 const PlatformTenantManage = defineComponent({
@@ -57,11 +65,13 @@ const PlatformTenantManage = defineComponent({
       totalPage: 1,
       searchVal: '',
       tableData: [] as PlatformTenantRow[],
+      userOptions: [] as UserOption[],
       currentRow: null as PlatformTenantRow | null,
       formData: {
         tenantCode: '',
         tenantName: '',
-        description: ''
+        description: '',
+        adminUserIds: [] as number[]
       }
     })
 
@@ -75,6 +85,12 @@ const PlatformTenantManage = defineComponent({
         required: true,
         trigger: ['input', 'blur'],
         message: 'Please enter tenant name'
+      },
+      adminUserIds: {
+        type: 'array',
+        required: true,
+        trigger: ['change', 'blur'],
+        message: 'Please select platform tenant administrator'
       }
     }
 
@@ -90,18 +106,30 @@ const PlatformTenantManage = defineComponent({
       state.loading = false
     }
 
+    const requestUsers = async () => {
+      const users = await listAll()
+      state.userOptions = (users || []).map(
+        (user: { id: number; userName: string }) => ({
+          label: user.userName,
+          value: user.id
+        })
+      )
+    }
+
     const openModal = (row?: PlatformTenantRow) => {
       state.currentRow = row || null
       state.formData = row
         ? {
             tenantCode: row.tenantCode,
             tenantName: row.tenantName,
-            description: row.description || ''
+            description: row.description || '',
+            adminUserIds: row.adminUserIds || []
           }
         : {
             tenantCode: '',
             tenantName: '',
-            description: ''
+            description: '',
+            adminUserIds: []
           }
       state.showModal = true
     }
@@ -118,7 +146,7 @@ const PlatformTenantManage = defineComponent({
         await createPlatformTenant(state.formData)
       }
       closeModal()
-      requestData()
+      await requestData()
     }
 
     const deleteRow = async (row: PlatformTenantRow) => {
@@ -131,10 +159,23 @@ const PlatformTenantManage = defineComponent({
       requestData()
     }
 
+    const getAdminUserNames = (adminUserIds?: number[]) => {
+      if (!adminUserIds?.length) return '-'
+      return adminUserIds
+        .map((id) => state.userOptions.find((user) => user.value === id)?.label)
+        .filter(Boolean)
+        .join(', ')
+    }
+
     const columns = [
       { title: 'Code', key: 'tenantCode' },
       { title: 'Name', key: 'tenantName' },
       { title: 'Description', key: 'description' },
+      {
+        title: 'Administrators',
+        key: 'adminUserIds',
+        render: (row: PlatformTenantRow) => getAdminUserNames(row.adminUserIds)
+      },
       { title: 'Create Time', key: 'createTime' },
       { title: 'Update Time', key: 'updateTime' },
       {
@@ -156,7 +197,10 @@ const PlatformTenantManage = defineComponent({
       }
     ]
 
-    onMounted(requestData)
+    onMounted(() => {
+      requestData()
+      requestUsers()
+    })
 
     return {
       ...toRefs(state),
@@ -164,6 +208,7 @@ const PlatformTenantManage = defineComponent({
       rules,
       columns,
       requestData,
+      requestUsers,
       openModal,
       closeModal,
       confirmModal,
@@ -234,6 +279,14 @@ const PlatformTenantManage = defineComponent({
               <NInput
                 v-model:value={this.formData.description}
                 type='textarea'
+              />
+            </NFormItem>
+            <NFormItem label='Administrators' path='adminUserIds'>
+              <NSelect
+                v-model:value={this.formData.adminUserIds}
+                options={this.userOptions}
+                multiple
+                filterable
               />
             </NFormItem>
           </NForm>

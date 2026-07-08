@@ -19,6 +19,7 @@ package org.apache.dolphinscheduler.api.permission;
 
 import static java.util.stream.Collectors.toSet;
 
+import org.apache.dolphinscheduler.common.thread.PlatformTenantContext;
 import org.apache.dolphinscheduler.common.enums.AuthorizationType;
 import org.apache.dolphinscheduler.common.enums.UserType;
 import org.apache.dolphinscheduler.dao.entity.AccessToken;
@@ -26,6 +27,7 @@ import org.apache.dolphinscheduler.dao.entity.AlertGroup;
 import org.apache.dolphinscheduler.dao.entity.DataSource;
 import org.apache.dolphinscheduler.dao.entity.Environment;
 import org.apache.dolphinscheduler.dao.entity.K8sNamespace;
+import org.apache.dolphinscheduler.dao.entity.PlatformTenantUser;
 import org.apache.dolphinscheduler.dao.entity.Project;
 import org.apache.dolphinscheduler.dao.entity.Queue;
 import org.apache.dolphinscheduler.dao.entity.TaskGroup;
@@ -39,6 +41,7 @@ import org.apache.dolphinscheduler.dao.repository.AccessTokenDao;
 import org.apache.dolphinscheduler.dao.repository.AlertGroupDao;
 import org.apache.dolphinscheduler.dao.repository.DataSourceDao;
 import org.apache.dolphinscheduler.dao.repository.K8sNamespaceDao;
+import org.apache.dolphinscheduler.dao.repository.PlatformTenantUserDao;
 import org.apache.dolphinscheduler.dao.repository.ProjectDao;
 import org.apache.dolphinscheduler.dao.repository.QueueDao;
 import org.apache.dolphinscheduler.dao.repository.TenantDao;
@@ -70,6 +73,9 @@ public class ResourcePermissionCheckServiceImpl
 
     @Autowired
     private UserDao userDao;
+
+    @Autowired
+    private PlatformTenantUserDao platformTenantUserDao;
 
     static final Map<AuthorizationType, ResourceAcquisitionAndPermissionCheck<?>> RESOURCE_LIST_MAP =
             new ConcurrentHashMap<>();
@@ -106,7 +112,7 @@ public class ResourcePermissionCheckServiceImpl
             logger.error("User does not exist, userId:{}.", userId);
             return false;
         }
-        if (user.getUserType().equals(UserType.ADMIN_USER)) {
+        if (isSystemOrPlatformTenantAdmin(user)) {
             return true;
         }
         return RESOURCE_LIST_MAP.get(authorizationType).permissionCheck(userId, permissionKey, logger);
@@ -120,7 +126,20 @@ public class ResourcePermissionCheckServiceImpl
             return Collections.emptySet();
         }
         return (Set<Object>) RESOURCE_LIST_MAP.get(authorizationType).listAuthorizedResourceIds(
-                user.getUserType().equals(UserType.ADMIN_USER) ? 0 : userId, logger);
+                isSystemOrPlatformTenantAdmin(user) ? 0 : userId, logger);
+    }
+
+    private boolean isSystemOrPlatformTenantAdmin(User user) {
+        if (user.getUserType() == UserType.ADMIN_USER) {
+            return true;
+        }
+        Integer currentPlatformTenantId = PlatformTenantContext.getPlatformTenantId();
+        if (currentPlatformTenantId == null) {
+            return false;
+        }
+        PlatformTenantUser relation = platformTenantUserDao.queryByUserIdAndPlatformTenantId(user.getId(),
+                currentPlatformTenantId);
+        return relation != null && Objects.equals(relation.getAdminFlag(), 1);
     }
 
     @Component

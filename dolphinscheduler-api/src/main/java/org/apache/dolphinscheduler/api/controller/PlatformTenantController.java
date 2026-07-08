@@ -71,8 +71,10 @@ public class PlatformTenantController extends BaseController {
     public Result<PlatformTenant> createTenant(@Parameter(hidden = true) @RequestAttribute(value = Constants.SESSION_USER) User loginUser,
                                                @RequestParam(value = "tenantCode") String tenantCode,
                                                @RequestParam(value = "tenantName") String tenantName,
-                                               @RequestParam(value = "description", required = false) String description) {
-        return Result.success(platformTenantService.createTenant(loginUser, tenantCode, tenantName, description));
+                                               @RequestParam(value = "description", required = false) String description,
+                                               @RequestParam(value = "adminUserIds") List<Integer> adminUserIds) {
+        return Result.success(
+                platformTenantService.createTenant(loginUser, tenantCode, tenantName, description, adminUserIds));
     }
 
     @GetMapping()
@@ -101,8 +103,10 @@ public class PlatformTenantController extends BaseController {
                                                @PathVariable(value = "id") int id,
                                                @RequestParam(value = "tenantCode") String tenantCode,
                                                @RequestParam(value = "tenantName") String tenantName,
-                                               @RequestParam(value = "description", required = false) String description) {
-        return Result.success(platformTenantService.updateTenant(loginUser, id, tenantCode, tenantName, description));
+                                               @RequestParam(value = "description", required = false) String description,
+                                               @RequestParam(value = "adminUserIds") List<Integer> adminUserIds) {
+        return Result.success(
+                platformTenantService.updateTenant(loginUser, id, tenantCode, tenantName, description, adminUserIds));
     }
 
     @DeleteMapping(value = "/{id}")

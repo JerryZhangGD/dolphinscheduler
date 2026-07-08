@@ -1057,6 +1057,7 @@ CREATE TABLE `t_ds_platform_tenant_user` (
   `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'key',
   `platform_tenant_id` int(11) NOT NULL COMMENT 'platform tenant id',
   `user_id` int(11) NOT NULL COMMENT 'user id',
+  `admin_flag` tinyint(4) DEFAULT 0 COMMENT '0 normal member, 1 platform tenant admin',
   `create_time` datetime DEFAULT NULL COMMENT 'create time',
   `update_time` datetime DEFAULT NULL COMMENT 'update time',
   PRIMARY KEY (`id`),
@@ -1115,8 +1116,11 @@ VALUES ('1', 'admin', '7ad2410b2f4c074479a8937a28a22b8f', '0', 'xxx@qq.com', '',
 INSERT IGNORE INTO `t_ds_platform_tenant`(id, tenant_code, tenant_name, description, create_time, update_time)
 VALUES (1, 'default', 'default', 'default platform tenant', current_timestamp, current_timestamp);
 
-INSERT IGNORE INTO `t_ds_platform_tenant_user`(id, platform_tenant_id, user_id, create_time, update_time)
-VALUES (1, 1, 1, current_timestamp, current_timestamp);
+INSERT IGNORE INTO `t_ds_platform_tenant_user`(id, platform_tenant_id, user_id, admin_flag, create_time, update_time)
+VALUES (1, 1, 1, 1, current_timestamp, current_timestamp);
+
+INSERT IGNORE INTO `t_ds_project`(id, name, code, description, user_id, platform_tenant_id, flag, create_time, update_time)
+VALUES (1, '默认项目', 1000000000000000000, '', 1, 1, 1, current_timestamp, current_timestamp);
 
 -- ----------------------------
 -- Table structure for t_ds_plugin_define

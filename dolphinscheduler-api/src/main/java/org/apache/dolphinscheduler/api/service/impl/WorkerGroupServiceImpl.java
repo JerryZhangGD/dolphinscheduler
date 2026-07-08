@@ -27,7 +27,6 @@ import org.apache.dolphinscheduler.api.utils.PageInfo;
 import org.apache.dolphinscheduler.api.utils.Result;
 import org.apache.dolphinscheduler.common.constants.Constants;
 import org.apache.dolphinscheduler.common.enums.AuthorizationType;
-import org.apache.dolphinscheduler.common.enums.UserType;
 import org.apache.dolphinscheduler.common.enums.WorkerGroupSource;
 import org.apache.dolphinscheduler.common.enums.WorkflowExecutionStatus;
 import org.apache.dolphinscheduler.common.model.Server;
@@ -220,7 +219,7 @@ public class WorkerGroupServiceImpl extends BaseServiceImpl implements WorkerGro
 
         Result result = new Result();
         List<WorkerGroupPageDetail> workerGroupPageDetails;
-        if (loginUser.getUserType().equals(UserType.ADMIN_USER)) {
+        if (isAdmin(loginUser)) {
             workerGroupPageDetails = getUiWorkerGroupPageDetails(null);
         } else {
             Set<Integer> ids = resourcePermissionCheckService
@@ -272,7 +271,7 @@ public class WorkerGroupServiceImpl extends BaseServiceImpl implements WorkerGro
     @Override
     public List<String> queryAllGroup(User loginUser) {
         List<WorkerGroupPageDetail> workerGroups;
-        if (loginUser.getUserType().equals(UserType.ADMIN_USER)) {
+        if (isAdmin(loginUser)) {
             workerGroups = getUiWorkerGroupPageDetails(null);
         } else {
             Set<Integer> ids = resourcePermissionCheckService

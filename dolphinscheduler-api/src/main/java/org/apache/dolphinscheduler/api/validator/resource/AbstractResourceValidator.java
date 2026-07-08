@@ -125,7 +125,7 @@ public abstract class AbstractResourceValidator<T> implements IValidator<T> {
         }
 
         Set<String> storageTenantCodes;
-        if (user.getUserType() == UserType.ADMIN_USER) {
+        if (user.getUserType() == UserType.ADMIN_USER || Boolean.TRUE.equals(user.getCurrentPlatformTenantAdmin())) {
             List<Tenant> tenants = tenantDao.queryAll();
             storageTenantCodes = tenants.stream()
                     .map(tenant -> PlatformTenantResourceUtils.getStorageTenantCode(user, tenant))

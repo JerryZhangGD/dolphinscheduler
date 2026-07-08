@@ -166,6 +166,7 @@ export default {
     user_type: '用户类型',
     ordinary_user: '普通用户',
     administrator: '管理员',
+    platform_tenant_administrator: '平台租户管理员',
     tenant_code: '租户',
     tenant_id_tips: '请选择租户',
     queue: '队列',

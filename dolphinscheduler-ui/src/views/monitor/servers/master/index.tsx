@@ -42,8 +42,10 @@ const master = defineComponent({
     const selectedMasterAddressRef = ref('')
     const { t } = useI18n()
     const userStore = useUserStore()
+    const userInfo = userStore.getUserInfo as UserInfoRes
     const IS_ADMIN =
-      (userStore.getUserInfo as UserInfoRes).userType === 'ADMIN_USER'
+      userInfo.userType === 'ADMIN_USER' ||
+      Boolean(userInfo.currentPlatformTenantAdmin)
     const { variables, getTableMaster } = useMaster()
     const zkDirectoryRef: Ref<Array<RowData>> = ref([])
 

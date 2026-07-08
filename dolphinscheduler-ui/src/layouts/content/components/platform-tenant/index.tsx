@@ -54,7 +54,11 @@ const PlatformTenantSwitcher = defineComponent({
       const userInfo = await getUserInfo()
       userStore.setUserInfo(userInfo)
       userStore.setPlatformTenantId(userInfo.currentPlatformTenantId ?? null)
-      router.go(0)
+      if (router.currentRoute.value.name === 'home') {
+        router.go(0)
+        return
+      }
+      await router.replace({ name: 'home' })
     }
 
     const refreshUserInfo = async () => {

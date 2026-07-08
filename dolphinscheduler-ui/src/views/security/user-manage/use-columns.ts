@@ -46,7 +46,9 @@ export function useColumns(onCallback: Function) {
 
   const userStore = useUserStore()
   const userInfo = userStore.getUserInfo as UserInfoRes
-  const IS_ADMIN = userInfo.userType === 'ADMIN_USER'
+  const IS_ADMIN =
+    userInfo.userType === 'ADMIN_USER' ||
+    Boolean(userInfo.currentPlatformTenantAdmin)
 
   const columnsRef = ref({
     columns: [] as TableColumns,
@@ -71,7 +73,9 @@ export function useColumns(onCallback: Function) {
         title: t('security.user.user_type'),
         key: 'userType',
         render: (rowData: InternalRowData) =>
-          rowData.userType === 'GENERAL_USER'
+          rowData.currentPlatformTenantAdmin
+            ? t('security.user.platform_tenant_administrator')
+            : rowData.userType === 'GENERAL_USER'
             ? t('security.user.ordinary_user')
             : t('security.user.administrator'),
         ...COLUMN_WIDTH_CONFIG['type']

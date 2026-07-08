@@ -24,9 +24,15 @@ import styles from './index.module.scss'
 import Logo from '../logo'
 import Locales from '../locales'
 import PlatformTenantSwitcher from '../platform-tenant'
+import ProjectSwitcher from '../project-switch'
 import Timezone from '../timezone'
 import User from '../user'
 import Theme from '../theme'
+import {
+  goToProject,
+  queryProjects,
+  resolveDefaultProject
+} from '../project-switch/use-project-navigation'
 
 const Navbar = defineComponent({
   name: 'Navbar',
@@ -54,8 +60,21 @@ const Navbar = defineComponent({
     const { t } = useI18n()
     const menuKey = ref(route.meta.activeMenu as string)
 
-    const handleMenuClick = (key: string) => {
-      router.push({ path: `/${key}` })
+    const handleProjectMenuClick = async () => {
+      const project = resolveDefaultProject(await queryProjects())
+      if (project) {
+        await goToProject(router, project)
+        return
+      }
+      await router.push({ path: '/projects/list' })
+    }
+
+    const handleMenuClick = async (key: string) => {
+      if (key === 'projects') {
+        await handleProjectMenuClick()
+        return
+      }
+      await router.push({ path: `/${key}` })
     }
 
     const handleUISettingClick = () => {
@@ -97,6 +116,7 @@ const Navbar = defineComponent({
           <Theme />
           <Locales localesOptions={this.localesOptions} />
           <PlatformTenantSwitcher />
+          <ProjectSwitcher />
           <Timezone timezoneOptions={this.timezoneOptions} />
           <User userDropdownOptions={this.userDropdownOptions} />
         </div>

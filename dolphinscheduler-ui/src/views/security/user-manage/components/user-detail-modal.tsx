@@ -53,8 +53,15 @@ export const UserModal = defineComponent({
   emits: ['cancel', 'update'],
   setup(props, ctx) {
     const { t } = useI18n()
-    const { state, IS_ADMIN, formRules, onReset, onSave, onSetValues } =
-      useUserDetail()
+    const {
+      state,
+      IS_ADMIN,
+      IS_SYSTEM_ADMIN,
+      formRules,
+      onReset,
+      onSave,
+      onSetValues
+    } = useUserDetail()
     const onCancel = () => {
       onReset()
       ctx.emit('cancel')
@@ -81,6 +88,7 @@ export const UserModal = defineComponent({
       t,
       ...toRefs(state),
       IS_ADMIN,
+      IS_SYSTEM_ADMIN,
       formRules,
       onCancel,
       onConfirm,
@@ -136,7 +144,7 @@ export const UserModal = defineComponent({
               />
             </NFormItem>
           )}
-          {this.IS_ADMIN && (
+          {this.IS_SYSTEM_ADMIN && (
             <NFormItem label='Platform Tenant' path='platformTenantIds'>
               <NSelect
                 class='select-platform-tenant'

@@ -61,6 +61,11 @@ public class UserDaoImpl extends BaseDao<User, UserMapper> implements UserDao {
     }
 
     @Override
+    public IPage<User> queryUserPagingByPlatformTenantId(Page<User> page, String userName, Integer platformTenantId) {
+        return mybatisMapper.queryUserPagingByPlatformTenantId(page, userName, platformTenantId);
+    }
+
+    @Override
     public User queryDetailsById(int userId) {
         return mybatisMapper.queryDetailsById(userId);
     }
@@ -108,6 +113,16 @@ public class UserDaoImpl extends BaseDao<User, UserMapper> implements UserDao {
     @Override
     public List<User> queryEnabledUsers() {
         return mybatisMapper.queryEnabledUsers();
+    }
+
+    @Override
+    public List<User> queryAllGeneralUserByPlatformTenantId(Integer platformTenantId) {
+        return mybatisMapper.queryAllGeneralUserByPlatformTenantId(platformTenantId);
+    }
+
+    @Override
+    public List<User> queryEnabledUsersByPlatformTenantId(Integer platformTenantId) {
+        return mybatisMapper.queryEnabledUsersByPlatformTenantId(platformTenantId);
     }
 
     @Override

@@ -15,34 +15,7 @@
  * limitations under the License.
  */
 
-interface ListReq {
-  pageNo: number
-  pageSize: number
-  searchVal?: string
-}
-
-interface PlatformTenantCodeReq {
-  tenantCode: string
-}
-
-interface PlatformTenantReq extends PlatformTenantCodeReq {
-  tenantName: string
-  description?: string
-  adminUserIds: number[]
-}
-
-interface IdReq {
-  id: number
-}
-
-interface SwitchPlatformTenantReq {
-  platformTenantId: number
-}
-
-export {
-  ListReq,
-  PlatformTenantCodeReq,
-  PlatformTenantReq,
-  IdReq,
-  SwitchPlatformTenantReq
+.switcher {
+  width: 168px;
+  margin-right: 8px;
 }

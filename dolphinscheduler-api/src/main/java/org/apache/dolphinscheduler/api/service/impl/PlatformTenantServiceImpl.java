@@ -25,8 +25,10 @@ import org.apache.dolphinscheduler.api.utils.PageInfo;
 import org.apache.dolphinscheduler.api.utils.RegexUtils;
 import org.apache.dolphinscheduler.common.constants.Constants;
 import org.apache.dolphinscheduler.common.enums.UserType;
+import org.apache.dolphinscheduler.common.utils.CodeGenerateUtils;
 import org.apache.dolphinscheduler.dao.entity.PlatformTenant;
 import org.apache.dolphinscheduler.dao.entity.PlatformTenantUser;
+import org.apache.dolphinscheduler.dao.entity.Project;
 import org.apache.dolphinscheduler.dao.entity.Session;
 import org.apache.dolphinscheduler.dao.entity.User;
 import org.apache.dolphinscheduler.dao.repository.PlatformTenantDao;
@@ -50,6 +52,7 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -85,9 +88,14 @@ public class PlatformTenantServiceImpl extends BaseServiceImpl implements Platfo
 
     @Override
     @Transactional
-    public PlatformTenant createTenant(User loginUser, String tenantCode, String tenantName, String description) {
+    public PlatformTenant createTenant(User loginUser,
+                                       String tenantCode,
+                                       String tenantName,
+                                       String description,
+                                       Collection<Integer> adminUserIds) {
         checkAdmin(loginUser);
         checkTenantParams(tenantCode, tenantName, description);
+        Set<Integer> adminIds = checkAdminUserIds(adminUserIds);
         if (platformTenantDao.queryByCode(tenantCode) != null) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, tenantCode);
         }
@@ -101,6 +109,9 @@ public class PlatformTenantServiceImpl extends BaseServiceImpl implements Platfo
         tenant.setUpdateTime(now);
         platformTenantDao.insert(tenant);
         bindUserToTenants(loginUser.getId(), Collections.singleton(tenant.getId()));
+        syncPlatformTenantAdmins(tenant.getId(), adminIds);
+        ensureDefaultProject(tenant.getId(), loginUser);
+        fillTenantAdminUserIds(tenant);
         return tenant;
     }
 
@@ -110,9 +121,11 @@ public class PlatformTenantServiceImpl extends BaseServiceImpl implements Platfo
                                        int id,
                                        String tenantCode,
                                        String tenantName,
-                                       String description) {
+                                       String description,
+                                       Collection<Integer> adminUserIds) {
         checkAdmin(loginUser);
         checkTenantParams(tenantCode, tenantName, description);
+        Set<Integer> adminIds = checkAdminUserIds(adminUserIds);
 
         PlatformTenant existsTenant = platformTenantDao.queryById(id);
         if (existsTenant == null) {
@@ -129,6 +142,8 @@ public class PlatformTenantServiceImpl extends BaseServiceImpl implements Platfo
         existsTenant.setDescription(description);
         existsTenant.setUpdateTime(new Date());
         platformTenantDao.updateById(existsTenant);
+        syncPlatformTenantAdmins(id, adminIds);
+        fillTenantAdminUserIds(existsTenant);
         return existsTenant;
     }
 
@@ -161,15 +176,20 @@ public class PlatformTenantServiceImpl extends BaseServiceImpl implements Platfo
         checkAdmin(loginUser);
         Page<PlatformTenant> page = new Page<>(pageNo, pageSize);
         IPage<PlatformTenant> tenantPage = platformTenantDao.queryTenantPaging(page, searchVal);
+        fillTenantAdminUserIds(tenantPage.getRecords());
         return PageInfo.of(tenantPage);
     }
 
     @Override
     public List<PlatformTenant> queryTenantList(User loginUser) {
+        List<PlatformTenant> tenants;
         if (loginUser.getUserType() == UserType.ADMIN_USER) {
-            return platformTenantDao.queryAll();
+            tenants = platformTenantDao.queryAll();
+        } else {
+            tenants = queryTenantListByUserId(loginUser.getId());
         }
-        return queryTenantListByUserId(loginUser.getId());
+        fillTenantAdminUserIds(tenants);
+        return tenants;
     }
 
     @Override
@@ -218,7 +238,12 @@ public class PlatformTenantServiceImpl extends BaseServiceImpl implements Platfo
             }
         }
 
-        platformTenantUserDao.deleteByUserId(userId);
+        Set<Integer> removedTenantIds = platformTenantUserDao.queryByUserId(userId)
+                .stream()
+                .map(PlatformTenantUser::getPlatformTenantId)
+                .filter(platformTenantId -> !distinctTenantIds.contains(platformTenantId))
+                .collect(Collectors.toSet());
+        platformTenantUserDao.deleteByUserIdAndTenantIds(userId, removedTenantIds);
         bindUserToTenants(userId, distinctTenantIds);
     }
 
@@ -266,6 +291,29 @@ public class PlatformTenantServiceImpl extends BaseServiceImpl implements Platfo
         return currentTenant;
     }
 
+    private void ensureDefaultProject(int platformTenantId, User loginUser) {
+        if (projectDao.queryByName(Constants.DEFAULT_PROJECT_NAME, platformTenantId) != null) {
+            return;
+        }
+
+        Date now = new Date();
+        Project project = Project.builder()
+                .name(Constants.DEFAULT_PROJECT_NAME)
+                .code(CodeGenerateUtils.genCode())
+                .description("")
+                .userId(loginUser.getId())
+                .platformTenantId(platformTenantId)
+                .userName(loginUser.getUserName())
+                .createTime(now)
+                .updateTime(now)
+                .build();
+        try {
+            projectDao.insert(project);
+        } catch (DuplicateKeyException ex) {
+            log.info("Default project already exists, platformTenantId:{}.", platformTenantId);
+        }
+    }
+
     private void updateSessionPlatformTenant(String sessionId, Integer platformTenantId) {
         if (StringUtils.isBlank(sessionId)) {
             return;
@@ -282,22 +330,98 @@ public class PlatformTenantServiceImpl extends BaseServiceImpl implements Platfo
         user.setCurrentPlatformTenantId(currentTenant.getId());
         user.setCurrentPlatformTenantCode(currentTenant.getTenantCode());
         user.setCurrentPlatformTenantName(currentTenant.getTenantName());
+        user.setCurrentPlatformTenantAdmin(
+                isPlatformTenantAdmin(user.getId(), currentTenant.getId()));
         user.setPlatformTenants(tenants);
     }
 
     private void bindUserToTenants(int userId, Collection<Integer> platformTenantIds) {
+        bindUserToTenants(userId, platformTenantIds, 0);
+    }
+
+    private void bindUserToTenants(int userId, Collection<Integer> platformTenantIds, int adminFlag) {
         Date now = new Date();
         for (Integer platformTenantId : platformTenantIds) {
-            if (platformTenantUserDao.relationExists(userId, platformTenantId)) {
+            PlatformTenantUser relation =
+                    platformTenantUserDao.queryByUserIdAndPlatformTenantId(userId, platformTenantId);
+            if (relation != null) {
+                if (adminFlag == 1 && !Objects.equals(relation.getAdminFlag(), adminFlag)) {
+                    relation.setAdminFlag(adminFlag);
+                    relation.setUpdateTime(now);
+                    platformTenantUserDao.updateById(relation);
+                }
                 continue;
             }
-            PlatformTenantUser relation = new PlatformTenantUser();
+            relation = new PlatformTenantUser();
             relation.setUserId(userId);
             relation.setPlatformTenantId(platformTenantId);
+            relation.setAdminFlag(adminFlag);
             relation.setCreateTime(now);
             relation.setUpdateTime(now);
             platformTenantUserDao.insert(relation);
         }
+    }
+
+    private Set<Integer> checkAdminUserIds(Collection<Integer> adminUserIds) {
+        if (CollectionUtils.isEmpty(adminUserIds)) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "adminUserIds");
+        }
+        Set<Integer> distinctAdminUserIds = adminUserIds.stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (CollectionUtils.isEmpty(distinctAdminUserIds)) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "adminUserIds");
+        }
+        for (Integer adminUserId : distinctAdminUserIds) {
+            if (userDao.queryById(adminUserId) == null) {
+                throw new ServiceException(Status.USER_NOT_EXIST, adminUserId);
+            }
+        }
+        return distinctAdminUserIds;
+    }
+
+    private void syncPlatformTenantAdmins(int platformTenantId, Set<Integer> adminUserIds) {
+        Date now = new Date();
+        List<PlatformTenantUser> currentAdminRelations =
+                platformTenantUserDao.queryAdminsByPlatformTenantId(platformTenantId);
+        for (PlatformTenantUser currentAdminRelation : currentAdminRelations) {
+            if (adminUserIds.contains(currentAdminRelation.getUserId())) {
+                continue;
+            }
+            currentAdminRelation.setAdminFlag(0);
+            currentAdminRelation.setUpdateTime(now);
+            platformTenantUserDao.updateById(currentAdminRelation);
+        }
+        for (Integer adminUserId : adminUserIds) {
+            bindUserToTenants(adminUserId, Collections.singleton(platformTenantId), 1);
+        }
+    }
+
+    private boolean isPlatformTenantAdmin(Integer userId, Integer platformTenantId) {
+        if (userId == null || platformTenantId == null) {
+            return false;
+        }
+        PlatformTenantUser relation = platformTenantUserDao.queryByUserIdAndPlatformTenantId(userId, platformTenantId);
+        return relation != null && Objects.equals(relation.getAdminFlag(), 1);
+    }
+
+    private void fillTenantAdminUserIds(List<PlatformTenant> tenants) {
+        if (CollectionUtils.isEmpty(tenants)) {
+            return;
+        }
+        for (PlatformTenant tenant : tenants) {
+            fillTenantAdminUserIds(tenant);
+        }
+    }
+
+    private void fillTenantAdminUserIds(PlatformTenant tenant) {
+        if (tenant == null || tenant.getId() == null) {
+            return;
+        }
+        tenant.setAdminUserIds(platformTenantUserDao.queryAdminsByPlatformTenantId(tenant.getId())
+                .stream()
+                .map(PlatformTenantUser::getUserId)
+                .collect(Collectors.toList()));
     }
 
     private void checkTenantParams(String tenantCode, String tenantName, String description) {

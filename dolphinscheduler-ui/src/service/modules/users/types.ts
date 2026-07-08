@@ -74,7 +74,7 @@ interface ListAllReq extends UserReq {
   queueName?: string
   tenantCode?: string
   updateTime?: string
-  userType?: 'ADMIN_USER' | 'GENERAL_USER'
+  userType?: 'ADMIN_USER' | 'GENERAL_USER' | 'PLATFORM_TENANT_ADMIN'
 }
 
 interface ListReq {
@@ -95,6 +95,7 @@ interface UserInfoRes extends UserReq, IdReq {
   currentPlatformTenantId?: number
   currentPlatformTenantCode?: string
   currentPlatformTenantName?: string
+  currentPlatformTenantAdmin?: boolean
   platformTenants?: PlatformTenant[]
   tenantCode?: any
   queueName?: any
@@ -126,6 +127,7 @@ interface PlatformTenant {
   tenantCode: string
   tenantName: string
   description?: string
+  adminUserIds?: number[]
   createTime?: string
   updateTime?: string
 }

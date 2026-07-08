@@ -53,7 +53,6 @@ import org.apache.dolphinscheduler.api.utils.Result;
 import org.apache.dolphinscheduler.api.validator.GlobalParamsValidator;
 import org.apache.dolphinscheduler.common.constants.Constants;
 import org.apache.dolphinscheduler.common.enums.ReleaseState;
-import org.apache.dolphinscheduler.common.enums.UserType;
 import org.apache.dolphinscheduler.common.enums.WorkflowExecutionStatus;
 import org.apache.dolphinscheduler.common.enums.WorkflowExecutionTypeEnum;
 import org.apache.dolphinscheduler.common.graph.DAG;
@@ -867,7 +866,7 @@ public class WorkflowDefinitionServiceImpl extends BaseServiceImpl implements Wo
         projectService.checkProjectAndAuthThrowException(loginUser, project, WORKFLOW_DEFINITION_DELETE);
 
         // Determine if the login user is the owner of the workflow definition
-        if (loginUser.getId() != workflowDefinition.getUserId() && loginUser.getUserType() != UserType.ADMIN_USER) {
+        if (loginUser.getId() != workflowDefinition.getUserId() && !isAdmin(loginUser)) {
             throw new ServiceException(Status.USER_NO_OPERATION_PERM);
         }
 

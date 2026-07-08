@@ -28,7 +28,9 @@ export function useUserDetail() {
   const { t } = useI18n()
   const userStore = useUserStore()
   const userInfo = userStore.getUserInfo as UserInfoRes
-  const IS_ADMIN = userInfo.userType === 'ADMIN_USER'
+  const IS_SYSTEM_ADMIN = userInfo.userType === 'ADMIN_USER'
+  const IS_ADMIN =
+    IS_SYSTEM_ADMIN || Boolean(userInfo.currentPlatformTenantAdmin)
 
   const initialValues = {
     userName: '',
@@ -90,7 +92,7 @@ export function useUserDetail() {
       trigger: ['input', 'blur'],
       required: true,
       validator(validator: any, value: number[]) {
-        if (IS_ADMIN && (!value || !value.length)) {
+        if (IS_SYSTEM_ADMIN && (!value || !value.length)) {
           return new Error('Please select platform tenant')
         }
       }
@@ -206,9 +208,19 @@ export function useUserDetail() {
     if (IS_ADMIN) {
       getQueues()
       getTenants()
+    }
+    if (IS_SYSTEM_ADMIN) {
       getPlatformTenants()
     }
   })
 
-  return { state, formRules, IS_ADMIN, onReset, onSave, onSetValues }
+  return {
+    state,
+    formRules,
+    IS_ADMIN,
+    IS_SYSTEM_ADMIN,
+    onReset,
+    onSave,
+    onSetValues
+  }
 }

@@ -170,6 +170,7 @@ export default {
     user_type: 'User Type',
     ordinary_user: 'Ordinary users',
     administrator: 'Administrator',
+    platform_tenant_administrator: 'Platform Tenant Administrator',
     tenant_code: 'Tenant',
     tenant_id_tips: 'Please select tenant',
     queue: 'Queue',

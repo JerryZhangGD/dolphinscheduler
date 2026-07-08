@@ -26,6 +26,7 @@ export default {
   create_time: '创建时间',
   update_time: '更新时间',
   administrator: '管理员',
+  platform_tenant_administrator: '平台租户管理员',
   ordinary_user: '普通用户',
   edit_profile: '编辑用户',
   username_tips: '请输入用户名',

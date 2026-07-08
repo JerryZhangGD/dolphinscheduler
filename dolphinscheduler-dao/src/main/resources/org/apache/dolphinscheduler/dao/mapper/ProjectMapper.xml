@@ -166,7 +166,8 @@
         from t_ds_project
         where 1 = 1
         <if test="userId != 0">
-            and user_id = #{userId}
+            and id in (select project_id from t_ds_relation_project_user where user_id=#{userId}
+            union select id as project_id from t_ds_project where user_id=#{userId})
         </if>
         <if test="platformTenantId != null">
             and platform_tenant_id = #{platformTenantId}

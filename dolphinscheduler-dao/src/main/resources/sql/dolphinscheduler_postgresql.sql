@@ -966,6 +966,7 @@ CREATE TABLE t_ds_platform_tenant_user (
   id int NOT NULL ,
   platform_tenant_id int NOT NULL ,
   user_id int NOT NULL ,
+  admin_flag smallint DEFAULT 0 ,
   create_time timestamp DEFAULT NULL ,
   update_time timestamp DEFAULT NULL ,
   PRIMARY KEY (id)
@@ -1134,8 +1135,12 @@ INSERT INTO t_ds_platform_tenant(tenant_code, tenant_name, description, create_t
 VALUES ('default', 'default', 'default platform tenant', '2018-03-27 15:48:50', '2018-10-24 17:40:22');
 
 -- Records of t_ds_platform_tenant_user
-INSERT INTO t_ds_platform_tenant_user(platform_tenant_id, user_id, create_time, update_time)
-VALUES (1, 1, '2018-03-27 15:48:50', '2018-10-24 17:40:22');
+INSERT INTO t_ds_platform_tenant_user(platform_tenant_id, user_id, admin_flag, create_time, update_time)
+VALUES (1, 1, 1, '2018-03-27 15:48:50', '2018-10-24 17:40:22');
+
+-- Records of t_ds_project
+INSERT INTO t_ds_project(name, code, description, user_id, platform_tenant_id, flag, create_time, update_time)
+VALUES ('默认项目', 1000000000000000000, '', 1, 1, 1, '2018-03-27 15:48:50', '2018-10-24 17:40:22');
 
 -- Records of t_ds_tenant
 INSERT INTO t_ds_tenant(id, tenant_code, description, queue_id, create_time, update_time)

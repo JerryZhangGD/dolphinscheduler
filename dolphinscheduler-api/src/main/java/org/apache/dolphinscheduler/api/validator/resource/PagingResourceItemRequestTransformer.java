@@ -62,7 +62,8 @@ public class PagingResourceItemRequestTransformer implements ITransformer<Paging
 
         ResourceType resourceType = pagingResourceItemRequest.getResourceType();
         User loginUser = pagingResourceItemRequest.getLoginUser();
-        if (loginUser.getUserType() == UserType.ADMIN_USER) {
+        if (loginUser.getUserType() == UserType.ADMIN_USER
+                || Boolean.TRUE.equals(loginUser.getCurrentPlatformTenantAdmin())) {
             // If the current user is admin
             // then will query all tenant resources
             List<String> resourceAbsolutePaths = tenantDao.queryAll()

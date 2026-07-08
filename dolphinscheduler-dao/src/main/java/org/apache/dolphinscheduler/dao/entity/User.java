@@ -69,6 +69,9 @@ public class User {
     private String currentPlatformTenantName;
 
     @TableField(exist = false)
+    private Boolean currentPlatformTenantAdmin;
+
+    @TableField(exist = false)
     private List<PlatformTenant> platformTenants;
 
     private String queue;

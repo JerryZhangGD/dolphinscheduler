@@ -21,7 +21,7 @@ import type {
 import { UserReq } from '@/service/modules/users/types'
 export type { UserInfoRes } from '@/service/modules/users/types'
 
-type TUserType = 'GENERAL_USER' | ''
+type TUserType = 'ADMIN_USER' | 'GENERAL_USER' | 'PLATFORM_TENANT_ADMIN' | ''
 type TAuthType =
   | 'authorize_project'
   | 'authorize_datasource'
@@ -31,6 +31,7 @@ interface IRecord {
   id: number
   userName: string
   userType: TUserType
+  currentPlatformTenantAdmin?: boolean
   tenantCode: string
   tenantId: null | number
   platformTenants?: { id: number; tenantCode: string; tenantName: string }[]

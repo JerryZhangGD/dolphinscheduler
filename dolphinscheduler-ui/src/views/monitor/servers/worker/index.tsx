@@ -40,8 +40,10 @@ const worker = defineComponent({
     const selectedWorkerAddressRef = ref('')
     const { t } = useI18n()
     const userStore = useUserStore()
+    const userInfo = userStore.getUserInfo as UserInfoRes
     const IS_ADMIN =
-      (userStore.getUserInfo as UserInfoRes).userType === 'ADMIN_USER'
+      userInfo.userType === 'ADMIN_USER' ||
+      Boolean(userInfo.currentPlatformTenantAdmin)
     const { variables, getTableWorker } = useWorker()
     const zkDirectoryRef: Ref<Array<RowData>> = ref([])
 

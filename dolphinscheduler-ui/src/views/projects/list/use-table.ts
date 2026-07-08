@@ -49,7 +49,9 @@ export function useTable() {
 
   const userStore = useUserStore()
   const userInfo = userStore.getUserInfo as UserInfoRes
-  const IS_ADMIN = userInfo.userType === 'ADMIN_USER'
+  const IS_ADMIN =
+    userInfo.userType === 'ADMIN_USER' ||
+    Boolean(userInfo.currentPlatformTenantAdmin)
 
   const handleEdit = (row: any) => {
     variables.showModalRef = true

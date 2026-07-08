@@ -22,7 +22,9 @@ export function useUserInfo() {
   const userStore = useUserStore()
   const userInfo = userStore.getUserInfo as UserInfoRes
 
-  const IS_ADMIN = userInfo.userType === 'ADMIN_USER'
+  const IS_ADMIN =
+    userInfo.userType === 'ADMIN_USER' ||
+    Boolean(userInfo.currentPlatformTenantAdmin)
 
   return { IS_ADMIN }
 }

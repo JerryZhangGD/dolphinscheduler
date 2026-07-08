@@ -87,6 +87,77 @@ export function useDataList() {
   const changeMenuOption = (state: any) => {
     const projectCode = route.params.projectCode || ''
     const projectName = route.query.projectName || ''
+    const userInfo = userStore.getUserInfo as UserInfoRes
+    const isSystemAdmin = userInfo.userType === 'ADMIN_USER'
+    const isPlatformTenantAdmin = Boolean(userInfo.currentPlatformTenantAdmin)
+    const isGeneralUser = !isSystemAdmin && !isPlatformTenantAdmin
+    const adminSecurityOptions = [
+      {
+        label: t('menu.tenant_manage'),
+        key: '/security/tenant-manage',
+        icon: renderIcon(UsergroupAddOutlined)
+      },
+      {
+        label: t('menu.platform_tenant_manage'),
+        key: '/security/platform-tenant-manage',
+        icon: renderIcon(UsergroupAddOutlined)
+      },
+      {
+        label: t('menu.user_manage'),
+        key: '/security/user-manage',
+        icon: renderIcon(UserAddOutlined)
+      },
+      {
+        label: t('menu.alarm_group_manage'),
+        key: '/security/alarm-group-manage',
+        icon: renderIcon(WarningOutlined)
+      },
+      {
+        label: t('menu.alarm_instance_manage'),
+        key: '/security/alarm-instance-manage',
+        icon: renderIcon(InfoCircleOutlined)
+      },
+      {
+        label: t('menu.worker_group_manage'),
+        key: '/security/worker-group-manage',
+        icon: renderIcon(ControlOutlined)
+      },
+      {
+        label: t('menu.yarn_queue_manage'),
+        key: '/security/yarn-queue-manage',
+        icon: renderIcon(SlackOutlined)
+      },
+      {
+        label: t('menu.environment_manage'),
+        key: '/security/environment-manage',
+        icon: renderIcon(EnvironmentOutlined)
+      },
+      {
+        label: t('menu.cluster_manage'),
+        key: '/security/cluster-manage',
+        icon: renderIcon(ClusterOutlined)
+      },
+      {
+        label: t('menu.k8s_namespace_manage'),
+        key: '/security/k8s-namespace-manage',
+        icon: renderIcon(CloudServerOutlined)
+      },
+      {
+        label: t('menu.token_manage'),
+        key: '/security/token-manage',
+        icon: renderIcon(SafetyOutlined)
+      }
+    ]
+    const tokenSecurityOptions = [
+      {
+        label: t('menu.token_manage'),
+        key: '/security/token-manage',
+        icon: renderIcon(SafetyOutlined)
+      }
+    ]
+    const platformTenantAdminSecurityOptions = adminSecurityOptions.filter(
+      (option) => option.key !== '/security/platform-tenant-manage'
+    )
     state.menuOptions = [
       {
         label: () => h(NEllipsis, null, { default: () => t('menu.home') }),
@@ -245,74 +316,19 @@ export function useDataList() {
         label: () => h(NEllipsis, null, { default: () => t('menu.security') }),
         key: 'security',
         icon: renderIcon(SafetyCertificateOutlined),
-        children:
-          (userStore.getUserInfo as UserInfoRes).userType === 'ADMIN_USER'
-            ? [
-                {
-                  label: t('menu.tenant_manage'),
-                  key: '/security/tenant-manage',
-                  icon: renderIcon(UsergroupAddOutlined)
-                },
-                {
-                  label: t('menu.platform_tenant_manage'),
-                  key: '/security/platform-tenant-manage',
-                  icon: renderIcon(UsergroupAddOutlined)
-                },
-                {
-                  label: t('menu.user_manage'),
-                  key: '/security/user-manage',
-                  icon: renderIcon(UserAddOutlined)
-                },
-                {
-                  label: t('menu.alarm_group_manage'),
-                  key: '/security/alarm-group-manage',
-                  icon: renderIcon(WarningOutlined)
-                },
-                {
-                  label: t('menu.alarm_instance_manage'),
-                  key: '/security/alarm-instance-manage',
-                  icon: renderIcon(InfoCircleOutlined)
-                },
-                {
-                  label: t('menu.worker_group_manage'),
-                  key: '/security/worker-group-manage',
-                  icon: renderIcon(ControlOutlined)
-                },
-                {
-                  label: t('menu.yarn_queue_manage'),
-                  key: '/security/yarn-queue-manage',
-                  icon: renderIcon(SlackOutlined)
-                },
-                {
-                  label: t('menu.environment_manage'),
-                  key: '/security/environment-manage',
-                  icon: renderIcon(EnvironmentOutlined)
-                },
-                {
-                  label: t('menu.cluster_manage'),
-                  key: '/security/cluster-manage',
-                  icon: renderIcon(ClusterOutlined)
-                },
-                {
-                  label: t('menu.k8s_namespace_manage'),
-                  key: '/security/k8s-namespace-manage',
-                  icon: renderIcon(CloudServerOutlined)
-                },
-                {
-                  label: t('menu.token_manage'),
-                  key: '/security/token-manage',
-                  icon: renderIcon(SafetyOutlined)
-                }
-              ]
-            : [
-                {
-                  label: t('menu.token_manage'),
-                  key: '/security/token-manage',
-                  icon: renderIcon(SafetyOutlined)
-                }
-              ]
+        children: isSystemAdmin
+          ? adminSecurityOptions
+          : isPlatformTenantAdmin
+          ? platformTenantAdminSecurityOptions
+          : tokenSecurityOptions
       }
     ]
+    if (isGeneralUser) {
+      state.menuOptions = state.menuOptions.filter(
+        (option: { key: string }) =>
+          !['resource', 'monitor', 'security'].includes(option.key)
+      )
+    }
   }
 
   const changeHeaderMenuOptions = (state: any) => {

@@ -237,6 +237,8 @@ public final class Constants {
 
     public static final long DEFAULT_PROJECT_CODE = 0;
 
+    public static final String DEFAULT_PROJECT_NAME = "默认项目";
+
     public static final long DEPENDENT_ALL_TASK = 0;
 
     public static final String SESSION_USER = "session.user";

@@ -35,15 +35,15 @@ export function useModal(
 ) {
   const { t } = useI18n()
   const userStore = useUserStore()
+  const userInfo = userStore.getUserInfo as UserInfoRes
+  const IS_ADMIN =
+    userInfo.userType === 'ADMIN_USER' ||
+    Boolean(userInfo.currentPlatformTenantAdmin)
   const variables = reactive({
     alertGroupFormRef: ref(),
     model: {
       id: ref<number>(-1),
-      userId: ref(
-        (userStore.getUserInfo as UserInfoRes).userType === 'GENERAL_USER'
-          ? (userStore.getUserInfo as UserInfoRes).id
-          : null
-      ),
+      userId: ref(IS_ADMIN ? null : userInfo.id),
       expireTime: null as number | null,
       token: ref(''),
       generalOptions: []
@@ -134,10 +134,7 @@ export function useModal(
     }
 
     createToken(data).then(() => {
-      variables.model.userId =
-        (userStore.getUserInfo as UserInfoRes).userType === 'GENERAL_USER'
-          ? (userStore.getUserInfo as UserInfoRes).id
-          : null
+      variables.model.userId = IS_ADMIN ? null : userInfo.id
       variables.model.expireTime = null
       variables.model.token = ''
       ctx.emit('confirmModal', props.showModalRef)
@@ -159,6 +156,7 @@ export function useModal(
 
   return {
     variables,
+    IS_ADMIN,
     handleValidate,
     getListData,
     getToken

@@ -36,6 +36,8 @@ public interface UserDao extends IDao<User> {
 
     IPage<User> queryUserPaging(Page<User> page, String userName);
 
+    IPage<User> queryUserPagingByPlatformTenantId(Page<User> page, String userName, Integer platformTenantId);
+
     User queryDetailsById(int userId);
 
     List<User> queryUserListByAlertGroupId(int alertGroupId);
@@ -55,6 +57,10 @@ public interface UserDao extends IDao<User> {
     List<User> queryAuthedUserListByProjectId(int projectId);
 
     List<User> queryEnabledUsers();
+
+    List<User> queryAllGeneralUserByPlatformTenantId(Integer platformTenantId);
+
+    List<User> queryEnabledUsersByPlatformTenantId(Integer platformTenantId);
 
     List<UserWithWorkflowDefinitionCode> queryUserWithWorkflowDefinitionCode(List<Long> workflowDefinitionCodes);
 }

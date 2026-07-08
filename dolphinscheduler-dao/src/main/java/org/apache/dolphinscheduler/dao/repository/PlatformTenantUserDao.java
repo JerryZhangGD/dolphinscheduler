@@ -28,6 +28,10 @@ public interface PlatformTenantUserDao extends IDao<PlatformTenantUser> {
 
     List<PlatformTenantUser> queryByPlatformTenantId(int platformTenantId);
 
+    PlatformTenantUser queryByUserIdAndPlatformTenantId(int userId, int platformTenantId);
+
+    List<PlatformTenantUser> queryAdminsByPlatformTenantId(int platformTenantId);
+
     boolean relationExists(int userId, int platformTenantId);
 
     void deleteByUserId(int userId);

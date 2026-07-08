@@ -55,12 +55,16 @@ router.beforeEach(
     NProgress.start()
     const userStore = useUserStore()
     const metaData: metaData = to.meta
+    const userInfo = userStore.getUserInfo as UserInfoRes
+    const isSystemAdmin = userInfo.userType === 'ADMIN_USER'
+    const isPlatformTenantAdmin = Boolean(userInfo.currentPlatformTenantAdmin)
+    const isPlatformTenantManage = to.name === 'platform-tenant-manage'
     if (
       metaData.auth?.includes('ADMIN_USER') &&
-      (userStore.getUserInfo as UserInfoRes).userType !== 'ADMIN_USER' &&
-      metaData.activeMenu === 'security'
+      metaData.activeMenu === 'security' &&
+      !isSystemAdmin &&
+      (!isPlatformTenantAdmin || isPlatformTenantManage)
     ) {
-      to.fullPath = '/security/token-manage'
       next({ name: 'token-manage' })
     } else {
       next()

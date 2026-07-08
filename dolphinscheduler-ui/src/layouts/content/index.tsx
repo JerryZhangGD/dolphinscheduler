@@ -22,8 +22,10 @@ import SideBar from './components/sidebar'
 import { useDataList } from './use-dataList'
 import { useLocalesStore } from '@/store/locales/locales'
 import { useRouteStore } from '@/store/route/route'
+import { useUserStore } from '@/store/user/user'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
+import type { UserInfoRes } from '@/service/modules/users/types'
 
 const Content = defineComponent({
   name: 'DSContent',
@@ -34,6 +36,7 @@ const Content = defineComponent({
     const { locale } = useI18n()
     const localesStore = useLocalesStore()
     const routeStore = useRouteStore()
+    const userStore = useUserStore()
     const {
       state,
       changeMenuOption,
@@ -58,12 +61,30 @@ const Content = defineComponent({
       state.isShowSide = route.meta.showSide
     }
 
-    watch(useI18n().locale, () => {
+    const refreshMenu = () => {
       changeMenuOption(state)
       changeHeaderMenuOptions(state)
       getSideMenu(state)
+    }
+
+    watch(useI18n().locale, () => {
+      refreshMenu()
       changeUserDropdown(state)
     })
+
+    watch(
+      () => {
+        const userInfo = userStore.getUserInfo as UserInfoRes
+        return [
+          userStore.getPlatformTenantId,
+          userInfo.userType,
+          userInfo.currentPlatformTenantAdmin
+        ]
+      },
+      () => {
+        refreshMenu()
+      }
+    )
 
     watch(
       () => route.path,

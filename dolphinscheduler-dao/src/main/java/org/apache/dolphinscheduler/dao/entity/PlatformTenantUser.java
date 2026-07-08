@@ -36,6 +36,8 @@ public class PlatformTenantUser {
 
     private Integer userId;
 
+    private Integer adminFlag;
+
     private Date createTime;
 
     private Date updateTime;

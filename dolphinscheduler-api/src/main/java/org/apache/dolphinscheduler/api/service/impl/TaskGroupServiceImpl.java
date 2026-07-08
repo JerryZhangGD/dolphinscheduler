@@ -27,7 +27,6 @@ import org.apache.dolphinscheduler.api.utils.PageInfo;
 import org.apache.dolphinscheduler.common.constants.Constants;
 import org.apache.dolphinscheduler.common.enums.AuthorizationType;
 import org.apache.dolphinscheduler.common.enums.Flag;
-import org.apache.dolphinscheduler.common.enums.UserType;
 import org.apache.dolphinscheduler.dao.entity.Project;
 import org.apache.dolphinscheduler.dao.entity.ProjectUser;
 import org.apache.dolphinscheduler.dao.entity.TaskGroup;
@@ -274,7 +273,7 @@ public class TaskGroupServiceImpl extends BaseServiceImpl implements TaskGroupSe
     }
 
     private void requireProjectPerm(User loginUser, long projectCode, boolean writePermission) {
-        if (loginUser.getUserType() == UserType.ADMIN_USER) {
+        if (isAdmin(loginUser)) {
             return;
         }
         Project project = projectDao.queryByCode(projectCode);

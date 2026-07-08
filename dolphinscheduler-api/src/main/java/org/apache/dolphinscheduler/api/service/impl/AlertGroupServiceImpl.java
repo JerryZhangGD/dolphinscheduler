@@ -27,7 +27,6 @@ import org.apache.dolphinscheduler.api.exceptions.ServiceException;
 import org.apache.dolphinscheduler.api.service.AlertGroupService;
 import org.apache.dolphinscheduler.api.utils.PageInfo;
 import org.apache.dolphinscheduler.common.enums.AuthorizationType;
-import org.apache.dolphinscheduler.common.enums.UserType;
 import org.apache.dolphinscheduler.dao.entity.AlertGroup;
 import org.apache.dolphinscheduler.dao.entity.User;
 import org.apache.dolphinscheduler.dao.repository.AlertGroupDao;
@@ -67,7 +66,7 @@ public class AlertGroupServiceImpl extends BaseServiceImpl implements AlertGroup
      */
     @Override
     public List<AlertGroup> queryAllAlertGroup(User loginUser) {
-        if (loginUser.getUserType().equals(UserType.ADMIN_USER)) {
+        if (isAdmin(loginUser)) {
             return alertGroupDao.queryAllGroupList();
         }
         Set<Integer> ids = resourcePermissionCheckService.userOwnedResourceIdsAcquisition(AuthorizationType.ALERT_GROUP,
@@ -112,7 +111,7 @@ public class AlertGroupServiceImpl extends BaseServiceImpl implements AlertGroup
     @Override
     public PageInfo<AlertGroup> listPaging(User loginUser, String searchVal, Integer pageNo, Integer pageSize) {
         Page<AlertGroup> page = new Page<>(pageNo, pageSize);
-        if (loginUser.getUserType().equals(UserType.ADMIN_USER)) {
+        if (isAdmin(loginUser)) {
             IPage<AlertGroup> alertGroupIPage = alertGroupDao.queryAlertGroupPage(page, searchVal);
             return PageInfo.of(alertGroupIPage);
         }

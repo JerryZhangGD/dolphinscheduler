@@ -20,7 +20,6 @@ package org.apache.dolphinscheduler.api.service.impl;
 import org.apache.dolphinscheduler.api.enums.Status;
 import org.apache.dolphinscheduler.api.exceptions.ServiceException;
 import org.apache.dolphinscheduler.api.service.MonitorService;
-import org.apache.dolphinscheduler.common.enums.UserType;
 import org.apache.dolphinscheduler.common.model.Server;
 import org.apache.dolphinscheduler.dao.entity.User;
 import org.apache.dolphinscheduler.dao.plugin.api.monitor.DatabaseMetrics;
@@ -74,7 +73,7 @@ public class MonitorServiceImpl extends BaseServiceImpl implements MonitorServic
 
     @Override
     public List<WorkflowExecutorDTO> queryWorkflowExecutors(User loginUser, String masterAddress) {
-        if (!loginUser.getUserType().equals(UserType.ADMIN_USER)) {
+        if (!isAdmin(loginUser)) {
             throw new ServiceException(Status.NO_CURRENT_OPERATING_PERMISSION);
         }
 
@@ -90,7 +89,7 @@ public class MonitorServiceImpl extends BaseServiceImpl implements MonitorServic
 
     @Override
     public List<TaskExecutorDTO> queryTaskExecutors(User loginUser, String serverAddress) {
-        if (!loginUser.getUserType().equals(UserType.ADMIN_USER)) {
+        if (!isAdmin(loginUser)) {
             throw new ServiceException(Status.NO_CURRENT_OPERATING_PERMISSION);
         }
         TaskExecutorQueryResponse response = Clients

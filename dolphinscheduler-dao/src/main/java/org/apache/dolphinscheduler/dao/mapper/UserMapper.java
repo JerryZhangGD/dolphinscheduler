@@ -80,6 +80,10 @@ public interface UserMapper extends BaseMapper<User> {
     IPage<User> queryUserPaging(Page page,
                                 @Param("userName") String userName);
 
+    IPage<User> queryUserPagingByPlatformTenantId(Page page,
+                                                  @Param("userName") String userName,
+                                                  @Param("platformTenantId") Integer platformTenantId);
+
     /**
      * query user detail by id
      *
@@ -167,6 +171,10 @@ public interface UserMapper extends BaseMapper<User> {
      * @return
      */
     List<User> queryEnabledUsers();
+
+    List<User> queryAllGeneralUserByPlatformTenantId(@Param("platformTenantId") Integer platformTenantId);
+
+    List<User> queryEnabledUsersByPlatformTenantId(@Param("platformTenantId") Integer platformTenantId);
 
     /**
      * query User and task flow binding relationship

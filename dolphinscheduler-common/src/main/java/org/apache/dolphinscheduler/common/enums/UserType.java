@@ -22,10 +22,11 @@ import com.baomidou.mybatisplus.annotation.EnumValue;
 public enum UserType {
 
     /**
-     * 0 admin user; 1 general user
+     * 0 admin user; 1 general user; 2 platform tenant admin user
      */
     ADMIN_USER(0, "admin user"),
-    GENERAL_USER(1, "general user");
+    GENERAL_USER(1, "general user"),
+    PLATFORM_TENANT_ADMIN(2, "platform tenant admin user");
 
     UserType(int code, String descp) {
         this.code = code;

@@ -29,7 +29,6 @@ import org.apache.dolphinscheduler.api.utils.PageInfo;
 import org.apache.dolphinscheduler.api.utils.Result;
 import org.apache.dolphinscheduler.common.constants.Constants;
 import org.apache.dolphinscheduler.common.enums.AuthorizationType;
-import org.apache.dolphinscheduler.common.enums.UserType;
 import org.apache.dolphinscheduler.common.utils.CodeGenerateUtils;
 import org.apache.dolphinscheduler.dao.entity.Project;
 import org.apache.dolphinscheduler.dao.entity.ProjectUser;
@@ -61,6 +60,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -214,7 +214,7 @@ public class ProjectServiceImpl extends BaseServiceImpl implements ProjectServic
         }
         checkProjectPlatformTenant(loginUser, project);
         // case 1: user is admin
-        if (loginUser.getUserType() == UserType.ADMIN_USER) {
+        if (isAdmin(loginUser)) {
             return;
         }
         // case 2: user is project owner
@@ -249,6 +249,7 @@ public class ProjectServiceImpl extends BaseServiceImpl implements ProjectServic
     @Override
     public Result queryProjectListPaging(User loginUser, Integer pageSize, Integer pageNo, String searchVal) {
         Result result = new Result();
+        ensureDefaultProject(loginUser);
         PageInfo<Project> pageInfo = new PageInfo<>(pageNo, pageSize);
         Page<Project> page = new Page<>(pageNo, pageSize);
         Set<Integer> projectIds = resourcePermissionCheckService
@@ -262,7 +263,7 @@ public class ProjectServiceImpl extends BaseServiceImpl implements ProjectServic
                 projectDao.queryProjectListPaging(page, new ArrayList<>(projectIds), searchVal);
 
         List<Project> projectList = projectIPage.getRecords();
-        if (loginUser.getUserType() != UserType.ADMIN_USER) {
+        if (!isAdmin(loginUser)) {
             for (Project project : projectList) {
                 project.setPerm(Constants.DEFAULT_ADMIN_PERMISSION);
             }
@@ -441,7 +442,7 @@ public class ProjectServiceImpl extends BaseServiceImpl implements ProjectServic
         Set<Integer> projectIds = resourcePermissionCheckService
                 .userOwnedResourceIdsAcquisition(AuthorizationType.PROJECTS, loginUser.getId(), log);
         List<Project> projectList = projectDao.listAuthorizedProjects(
-                loginUser.getUserType().equals(UserType.ADMIN_USER) ? 0 : loginUser.getId(),
+                isAdmin(loginUser) ? 0 : loginUser.getId(),
                 new ArrayList<>(projectIds));
 
         List<Project> unauthorizedProjectsList = new ArrayList<>();
@@ -489,7 +490,7 @@ public class ProjectServiceImpl extends BaseServiceImpl implements ProjectServic
             return result;
         }
         List<Project> projectList = projectDao.listAuthorizedProjects(
-                loginUser.getUserType().equals(UserType.ADMIN_USER) ? 0 : loginUser.getId(),
+                isAdmin(loginUser) ? 0 : loginUser.getId(),
                 new ArrayList<>(projectIds));
 
         List<Project> resultList = new ArrayList<>();
@@ -621,7 +622,7 @@ public class ProjectServiceImpl extends BaseServiceImpl implements ProjectServic
      * @return permission
      */
     private int queryPermission(User user, Project project) {
-        if (user.getUserType() == UserType.ADMIN_USER) {
+        if (isAdmin(user)) {
             return Constants.READ_PERMISSION;
         }
 
@@ -648,8 +649,9 @@ public class ProjectServiceImpl extends BaseServiceImpl implements ProjectServic
     @Override
     public Result queryAllProjectList(User user) {
         Result result = new Result();
+        ensureDefaultProject(user);
         List<Project> projects =
-                projectDao.queryAllProject(user.getUserType() == UserType.ADMIN_USER ? 0 : user.getId());
+                projectDao.queryAllProject(isAdmin(user) ? 0 : user.getId());
 
         result.setData(projects);
         putMsg(result, Status.SUCCESS);
@@ -664,6 +666,7 @@ public class ProjectServiceImpl extends BaseServiceImpl implements ProjectServic
     @Override
     public Result queryAllProjectListForDependent(User loginUser) {
         Result result = new Result<>();
+        ensureDefaultProject(loginUser);
         List<Project> projects =
                 projectDao.queryAllProjectForDependent();
         result.setData(projects);
@@ -673,6 +676,64 @@ public class ProjectServiceImpl extends BaseServiceImpl implements ProjectServic
 
     public Result queryAllProjectListForDependent() {
         return queryAllProjectListForDependent(null);
+    }
+
+    private void ensureDefaultProject(User loginUser) {
+        if (loginUser == null) {
+            return;
+        }
+        Integer platformTenantId = loginUser.getCurrentPlatformTenantId();
+        if (platformTenantId == null) {
+            platformTenantId = Constants.DEFAULT_PLATFORM_TENANT_ID;
+        }
+        Project defaultProject = projectDao.queryByName(Constants.DEFAULT_PROJECT_NAME, platformTenantId);
+        if (defaultProject != null) {
+            ensureDefaultProjectUserRelation(loginUser, defaultProject);
+            return;
+        }
+
+        Date now = new Date();
+        Project project = Project.builder()
+                .name(Constants.DEFAULT_PROJECT_NAME)
+                .code(CodeGenerateUtils.genCode())
+                .description("")
+                .userId(loginUser.getId())
+                .platformTenantId(platformTenantId)
+                .userName(loginUser.getUserName())
+                .createTime(now)
+                .updateTime(now)
+                .build();
+        try {
+            projectDao.insert(project);
+            ensureDefaultProjectUserRelation(loginUser, project);
+        } catch (DuplicateKeyException ex) {
+            log.info("Default project already exists, platformTenantId:{}.", platformTenantId);
+            ensureDefaultProjectUserRelation(loginUser,
+                    projectDao.queryByName(Constants.DEFAULT_PROJECT_NAME, platformTenantId));
+        }
+    }
+
+    private void ensureDefaultProjectUserRelation(User loginUser, Project project) {
+        if (project == null || isAdmin(loginUser) || Objects.equals(project.getUserId(), loginUser.getId())) {
+            return;
+        }
+        if (projectUserDao.queryProjectRelation(project.getId(), loginUser.getId()) != null) {
+            return;
+        }
+
+        Date now = new Date();
+        ProjectUser projectUser = new ProjectUser();
+        projectUser.setUserId(loginUser.getId());
+        projectUser.setProjectId(project.getId());
+        projectUser.setPerm(Constants.AUTHORIZE_WRITABLE_PERM);
+        projectUser.setCreateTime(now);
+        projectUser.setUpdateTime(now);
+        try {
+            projectUserDao.insert(projectUser);
+        } catch (DuplicateKeyException ex) {
+            log.info("Default project user relation already exists, projectId:{}, userId:{}.",
+                    project.getId(), loginUser.getId());
+        }
     }
 
     @Override

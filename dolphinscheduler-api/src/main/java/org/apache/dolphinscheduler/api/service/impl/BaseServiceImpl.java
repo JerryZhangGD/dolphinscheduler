@@ -52,7 +52,7 @@ public class BaseServiceImpl implements BaseService {
      */
     @Override
     public boolean isAdmin(User user) {
-        return user.getUserType() == UserType.ADMIN_USER;
+        return user.getUserType() == UserType.ADMIN_USER || Boolean.TRUE.equals(user.getCurrentPlatformTenantAdmin());
     }
 
     /**
@@ -104,10 +104,13 @@ public class BaseServiceImpl implements BaseService {
      */
     @Override
     public boolean canOperatorPermissions(User user, Object[] ids, AuthorizationType type, String permissionKey) {
+        if (isAdmin(user)) {
+            return true;
+        }
         boolean operationPermissionCheck =
                 resourcePermissionCheckService.operationPermissionCheck(type, user.getId(), permissionKey, log);
         boolean resourcePermissionCheck = resourcePermissionCheckService.resourcePermissionCheck(type, ids,
-                user.getUserType().equals(UserType.ADMIN_USER) ? 0 : user.getId(), log);
+                user.getId(), log);
         return operationPermissionCheck && resourcePermissionCheck;
     }
 

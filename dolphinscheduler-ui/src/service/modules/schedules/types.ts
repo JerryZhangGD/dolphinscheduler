@@ -71,7 +71,7 @@ interface DeleteScheduleReq extends IdReq {
   updateTime?: string
   userName?: string
   userPassword?: string
-  userType?: 'ADMIN_USER' | 'GENERAL_USER'
+  userType?: 'ADMIN_USER' | 'GENERAL_USER' | 'PLATFORM_TENANT_ADMIN'
 }
 
 export {

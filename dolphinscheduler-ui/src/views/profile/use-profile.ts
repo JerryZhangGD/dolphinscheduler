@@ -39,6 +39,8 @@ export function useProfile() {
     value:
       userInfo.userType === 'ADMIN_USER'
         ? t('profile.administrator')
+        : userInfo.currentPlatformTenantAdmin
+        ? t('profile.platform_tenant_administrator')
         : t('profile.ordinary_user')
   })
   infoOptions.value.push({

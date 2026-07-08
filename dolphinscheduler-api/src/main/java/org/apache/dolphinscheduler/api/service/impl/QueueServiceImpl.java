@@ -27,7 +27,6 @@ import org.apache.dolphinscheduler.api.service.QueueService;
 import org.apache.dolphinscheduler.api.utils.PageInfo;
 import org.apache.dolphinscheduler.common.constants.Constants;
 import org.apache.dolphinscheduler.common.enums.AuthorizationType;
-import org.apache.dolphinscheduler.common.enums.UserType;
 import org.apache.dolphinscheduler.dao.entity.Queue;
 import org.apache.dolphinscheduler.dao.entity.Tenant;
 import org.apache.dolphinscheduler.dao.entity.User;
@@ -120,7 +119,7 @@ public class QueueServiceImpl extends BaseServiceImpl implements QueueService {
     public List<Queue> queryList(User loginUser) {
         Set<Integer> ids = resourcePermissionCheckService.userOwnedResourceIdsAcquisition(AuthorizationType.QUEUE,
                 loginUser.getId(), log);
-        if (loginUser.getUserType().equals(UserType.GENERAL_USER)) {
+        if (!isAdmin(loginUser)) {
             ids = ids.isEmpty() ? new HashSet<>() : ids;
             ids.add(Constants.DEFAULT_QUEUE_ID);
         }

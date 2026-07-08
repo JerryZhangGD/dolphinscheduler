@@ -28,7 +28,6 @@ import org.apache.dolphinscheduler.api.service.EnvironmentService;
 import org.apache.dolphinscheduler.api.utils.PageInfo;
 import org.apache.dolphinscheduler.api.utils.Result;
 import org.apache.dolphinscheduler.common.enums.AuthorizationType;
-import org.apache.dolphinscheduler.common.enums.UserType;
 import org.apache.dolphinscheduler.common.utils.CodeGenerateUtils;
 import org.apache.dolphinscheduler.common.utils.JSONUtils;
 import org.apache.dolphinscheduler.dao.entity.Environment;
@@ -161,7 +160,7 @@ public class EnvironmentServiceImpl extends BaseServiceImpl implements Environme
         Page<Environment> page = new Page<>(pageNo, pageSize);
         PageInfo<EnvironmentDto> pageInfo = new PageInfo<>(pageNo, pageSize);
         IPage<Environment> environmentIPage;
-        if (loginUser.getUserType().equals(UserType.ADMIN_USER)) {
+        if (isAdmin(loginUser)) {
             environmentIPage = environmentMapper.queryEnvironmentListPaging(page, searchVal);
         } else {
             Set<Integer> ids = resourcePermissionCheckService

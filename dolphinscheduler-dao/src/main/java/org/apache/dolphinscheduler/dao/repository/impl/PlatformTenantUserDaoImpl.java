@@ -56,6 +56,22 @@ public class PlatformTenantUserDaoImpl extends BaseDao<PlatformTenantUser, Platf
     }
 
     @Override
+    public PlatformTenantUser queryByUserIdAndPlatformTenantId(int userId, int platformTenantId) {
+        PlatformTenantUser query = new PlatformTenantUser();
+        query.setUserId(userId);
+        query.setPlatformTenantId(platformTenantId);
+        return mybatisMapper.selectOne(new QueryWrapper<>(query));
+    }
+
+    @Override
+    public List<PlatformTenantUser> queryAdminsByPlatformTenantId(int platformTenantId) {
+        PlatformTenantUser query = new PlatformTenantUser();
+        query.setPlatformTenantId(platformTenantId);
+        query.setAdminFlag(1);
+        return mybatisMapper.selectList(new QueryWrapper<>(query));
+    }
+
+    @Override
     public boolean relationExists(int userId, int platformTenantId) {
         PlatformTenantUser query = new PlatformTenantUser();
         query.setUserId(userId);

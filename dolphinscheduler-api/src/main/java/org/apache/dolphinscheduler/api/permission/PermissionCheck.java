@@ -77,7 +77,8 @@ public class PermissionCheck<T> {
                 logger.error("User does not exist, userId:{}.", userId);
                 throw new ServiceException(String.format("user %s doesn't exist", userId));
             }
-            if (user.getUserType() != UserType.ADMIN_USER) {
+            if (user.getUserType() != UserType.ADMIN_USER
+                    && !Boolean.TRUE.equals(user.getCurrentPlatformTenantAdmin())) {
                 List<T> unauthorizedList = processService.listUnauthorized(userId, needChecks, authorizationType);
                 // if exist unauthorized resource
                 if (CollectionUtils.isNotEmpty(unauthorizedList)) {

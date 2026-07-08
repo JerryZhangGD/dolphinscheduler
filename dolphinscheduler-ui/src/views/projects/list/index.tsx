@@ -24,6 +24,7 @@ import {
   toRefs,
   watch
 } from 'vue'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useTable } from './use-table'
 import Card from '@/components/card'
@@ -31,12 +32,39 @@ import Search from '@/components/input-search'
 import ProjectModal from './components/project-modal'
 import WorkerGroupModal from '@/views/projects/list/components/worker-group-modal'
 import totalCount from '@/utils/tableTotalCount'
+import { useUserStore } from '@/store/user/user'
+import type { UserInfoRes } from '@/service/modules/users/types'
+import {
+  goToProject,
+  queryProjects,
+  resolveDefaultProject
+} from '@/layouts/content/components/project-switch/use-project-navigation'
 
 const list = defineComponent({
   name: 'list',
   setup() {
     const { t } = useI18n()
+    const router = useRouter()
+    const userStore = useUserStore()
     const { variables, getTableData, createColumns } = useTable()
+
+    const isGeneralUser = () => {
+      const userInfo = userStore.getUserInfo as UserInfoRes
+      return (
+        userInfo.userType !== 'ADMIN_USER' &&
+        !Boolean(userInfo.currentPlatformTenantAdmin)
+      )
+    }
+
+    const redirectGeneralUserToDefaultProject = async () => {
+      if (!isGeneralUser()) return false
+
+      const project = resolveDefaultProject(await queryProjects())
+      if (!project) return false
+
+      await goToProject(router, project)
+      return true
+    }
 
     const requestData = () => {
       getTableData({
@@ -89,8 +117,9 @@ const list = defineComponent({
 
     const trim = getCurrentInstance()?.appContext.config.globalProperties.trim
 
-    onMounted(() => {
+    onMounted(async () => {
       createColumns(variables)
+      if (await redirectGeneralUserToDefaultProject()) return
       requestData()
     })
 

@@ -34,7 +34,6 @@ import org.apache.dolphinscheduler.common.constants.Constants;
 import org.apache.dolphinscheduler.common.enums.FailureStrategy;
 import org.apache.dolphinscheduler.common.enums.Priority;
 import org.apache.dolphinscheduler.common.enums.ReleaseState;
-import org.apache.dolphinscheduler.common.enums.UserType;
 import org.apache.dolphinscheduler.common.enums.WarningType;
 import org.apache.dolphinscheduler.common.utils.DateUtils;
 import org.apache.dolphinscheduler.common.utils.JSONUtils;
@@ -358,7 +357,7 @@ public class SchedulerServiceImpl extends BaseServiceImpl implements SchedulerSe
             throw new ServiceException(Status.SCHEDULE_STATE_ONLINE, scheduleId);
         }
         // Determine if the login user is the owner of the schedule
-        if (loginUser.getId() != schedule.getUserId() && loginUser.getUserType() != UserType.ADMIN_USER) {
+        if (loginUser.getId() != schedule.getUserId() && !isAdmin(loginUser)) {
             throw new ServiceException(Status.USER_NO_OPERATION_PERM);
         }
 

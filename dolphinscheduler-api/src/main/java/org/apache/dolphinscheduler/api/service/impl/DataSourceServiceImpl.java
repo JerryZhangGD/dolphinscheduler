@@ -27,7 +27,6 @@ import org.apache.dolphinscheduler.api.service.DataSourceService;
 import org.apache.dolphinscheduler.api.utils.PageInfo;
 import org.apache.dolphinscheduler.common.constants.Constants;
 import org.apache.dolphinscheduler.common.enums.AuthorizationType;
-import org.apache.dolphinscheduler.common.enums.UserType;
 import org.apache.dolphinscheduler.common.utils.JSONUtils;
 import org.apache.dolphinscheduler.dao.entity.DataSource;
 import org.apache.dolphinscheduler.dao.entity.User;
@@ -206,7 +205,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         IPage<DataSource> dataSourceList;
         Page<DataSource> dataSourcePage = new Page<>(pageNo, pageSize);
         PageInfo<DataSource> pageInfo = new PageInfo<>(pageNo, pageSize);
-        if (loginUser.getUserType().equals(UserType.ADMIN_USER)) {
+        if (isAdmin(loginUser)) {
             dataSourceList = dataSourceDao.queryDataSourcePaging(dataSourcePage, 0, searchVal);
         } else {
             Set<Integer> ids = resourcePermissionCheckService
@@ -249,7 +248,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
     public List<DataSource> queryDataSourceList(User loginUser, Integer type) {
 
         List<DataSource> datasourceList;
-        if (loginUser.getUserType().equals(UserType.ADMIN_USER)) {
+        if (isAdmin(loginUser)) {
             datasourceList = dataSourceDao.queryDataSourceByType(0, type);
         } else {
             Set<Integer> ids = resourcePermissionCheckService

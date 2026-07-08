@@ -1059,6 +1059,7 @@ CREATE TABLE t_ds_platform_tenant_user
     id                 int(11) NOT NULL AUTO_INCREMENT,
     platform_tenant_id int(11) NOT NULL,
     user_id            int(11) NOT NULL,
+    admin_flag         tinyint(4) DEFAULT 0,
     create_time        datetime DEFAULT NULL,
     update_time        datetime DEFAULT NULL,
     PRIMARY KEY (id),
@@ -1138,7 +1139,11 @@ INSERT INTO t_ds_platform_tenant
 VALUES ('1', 'default', 'default', 'default platform tenant', '2018-03-27 15:48:50', '2018-10-24 17:40:22');
 
 INSERT INTO t_ds_platform_tenant_user
-VALUES ('1', '1', '1', '2018-03-27 15:48:50', '2018-10-24 17:40:22');
+VALUES ('1', '1', '1', '1', '2018-03-27 15:48:50', '2018-10-24 17:40:22');
+
+INSERT INTO t_ds_project
+VALUES ('1', '默认项目', '1000000000000000000', '', '1', '1', '1', '2018-03-27 15:48:50',
+        '2018-10-24 17:40:22');
 
 -- ----------------------------
 -- Table structure for t_ds_plugin_define

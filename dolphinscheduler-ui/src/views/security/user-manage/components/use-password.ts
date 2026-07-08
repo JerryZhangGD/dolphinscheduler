@@ -28,7 +28,9 @@ export function usePassword() {
   const { t } = useI18n()
   const userStore = useUserStore()
   const userInfo = userStore.getUserInfo as UserInfoRes
-  const IS_ADMIN = userInfo.userType === 'ADMIN_USER'
+  const IS_ADMIN =
+    userInfo.userType === 'ADMIN_USER' ||
+    Boolean(userInfo.currentPlatformTenantAdmin)
 
   const initialValues = {
     userName: '',

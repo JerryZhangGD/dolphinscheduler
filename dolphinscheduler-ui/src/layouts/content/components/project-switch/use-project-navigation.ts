@@ -15,34 +15,26 @@
  * limitations under the License.
  */
 
-interface ListReq {
-  pageNo: number
-  pageSize: number
-  searchVal?: string
+import type { Router } from 'vue-router'
+import { queryAllProjectList } from '@/service/modules/projects'
+import type { ProjectList } from '@/service/modules/projects/types'
+
+const DEFAULT_PROJECT_NAME = '默认项目'
+
+export const queryProjects = async (): Promise<ProjectList[]> => {
+  return (await queryAllProjectList()) || []
 }
 
-interface PlatformTenantCodeReq {
-  tenantCode: string
+export const resolveDefaultProject = (projects: ProjectList[]) => {
+  return (
+    projects.find((project) => project.name === DEFAULT_PROJECT_NAME) ||
+    projects[0]
+  )
 }
 
-interface PlatformTenantReq extends PlatformTenantCodeReq {
-  tenantName: string
-  description?: string
-  adminUserIds: number[]
-}
-
-interface IdReq {
-  id: number
-}
-
-interface SwitchPlatformTenantReq {
-  platformTenantId: number
-}
-
-export {
-  ListReq,
-  PlatformTenantCodeReq,
-  PlatformTenantReq,
-  IdReq,
-  SwitchPlatformTenantReq
+export const goToProject = (router: Router, project: ProjectList) => {
+  return router.push({
+    path: `/projects/${project.code}`,
+    query: { projectName: project.name }
+  })
 }

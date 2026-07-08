@@ -26,9 +26,18 @@ import java.util.List;
 
 public interface PlatformTenantService {
 
-    PlatformTenant createTenant(User loginUser, String tenantCode, String tenantName, String description);
+    PlatformTenant createTenant(User loginUser,
+                                String tenantCode,
+                                String tenantName,
+                                String description,
+                                Collection<Integer> adminUserIds);
 
-    PlatformTenant updateTenant(User loginUser, int id, String tenantCode, String tenantName, String description);
+    PlatformTenant updateTenant(User loginUser,
+                                int id,
+                                String tenantCode,
+                                String tenantName,
+                                String description,
+                                Collection<Integer> adminUserIds);
 
     void deleteTenantById(User loginUser, int id);
 

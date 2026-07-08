@@ -24,7 +24,6 @@ import org.apache.dolphinscheduler.api.exceptions.ServiceException;
 import org.apache.dolphinscheduler.api.service.AccessTokenService;
 import org.apache.dolphinscheduler.api.utils.PageInfo;
 import org.apache.dolphinscheduler.common.enums.AuthorizationType;
-import org.apache.dolphinscheduler.common.enums.UserType;
 import org.apache.dolphinscheduler.common.utils.DateUtils;
 import org.apache.dolphinscheduler.common.utils.EncryptionUtils;
 import org.apache.dolphinscheduler.dao.entity.AccessToken;
@@ -66,7 +65,7 @@ public class AccessTokenServiceImpl extends BaseServiceImpl implements AccessTok
         PageInfo<AccessToken> pageInfo = new PageInfo<>(pageNo, pageSize);
         Page<AccessToken> page = new Page<>(pageNo, pageSize);
         int userId = loginUser.getId();
-        if (loginUser.getUserType() == UserType.ADMIN_USER) {
+        if (isAdmin(loginUser)) {
             userId = 0;
         }
         IPage<AccessToken> accessTokenList = accessTokenDao.queryAccessTokenPage(page, searchVal, userId);
@@ -85,10 +84,10 @@ public class AccessTokenServiceImpl extends BaseServiceImpl implements AccessTok
     @Override
     public List<AccessToken> queryAccessTokenByUser(User loginUser, Integer userId) {
         // no permission
-        if (loginUser.getUserType().equals(UserType.GENERAL_USER) && loginUser.getId() != userId) {
+        if (!isAdmin(loginUser) && loginUser.getId() != userId) {
             throw new ServiceException(Status.USER_NO_OPERATION_PERM);
         }
-        userId = loginUser.getUserType().equals(UserType.ADMIN_USER) ? 0 : userId;
+        userId = isAdmin(loginUser) ? 0 : userId;
         // query access token for specified user
         List<AccessToken> accessTokenList = this.accessTokenDao.queryAccessTokenByUser(userId);
         return accessTokenList;
@@ -169,7 +168,7 @@ public class AccessTokenServiceImpl extends BaseServiceImpl implements AccessTok
         }
 
         // admin can operate all, non-admin can operate their own
-        if (accessToken.getUserId() != loginUser.getId() && !loginUser.getUserType().equals(UserType.ADMIN_USER)) {
+        if (accessToken.getUserId() != loginUser.getId() && !isAdmin(loginUser)) {
             throw new ServiceException(Status.USER_NO_OPERATION_PERM);
         }
         accessTokenDao.deleteById(id);

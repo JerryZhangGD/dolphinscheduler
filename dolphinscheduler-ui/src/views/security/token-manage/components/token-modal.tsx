@@ -58,19 +58,16 @@ const TokenModal = defineComponent({
   },
   emits: ['cancelModal', 'confirmModal'],
   setup(props, ctx) {
-    const { variables, handleValidate, getListData, getToken } = useModal(
-      props,
-      ctx
-    )
+    const { variables, IS_ADMIN, handleValidate, getListData, getToken } =
+      useModal(props, ctx)
     const { t } = useI18n()
     const userStore = useUserStore()
 
     const cancelModal = () => {
       if (props.statusRef === 0) {
-        variables.model.userId =
-          (userStore.getUserInfo as UserInfoRes).userType === 'GENERAL_USER'
-            ? (userStore.getUserInfo as UserInfoRes).id
-            : null
+        variables.model.userId = IS_ADMIN
+          ? null
+          : (userStore.getUserInfo as UserInfoRes).id
         variables.model.expireTime = null
         variables.model.token = ''
       } else {
@@ -96,9 +93,7 @@ const TokenModal = defineComponent({
     watch(
       () => props.showModalRef,
       () => {
-        props.showModalRef &&
-          (userStore.getUserInfo as UserInfoRes).userType !== 'GENERAL_USER' &&
-          getListData()
+        props.showModalRef && IS_ADMIN && getListData()
       }
     )
 
@@ -106,10 +101,9 @@ const TokenModal = defineComponent({
       () => props.statusRef,
       () => {
         if (props.statusRef === 0) {
-          variables.model.userId =
-            (userStore.getUserInfo as UserInfoRes).userType === 'GENERAL_USER'
-              ? (userStore.getUserInfo as UserInfoRes).id
-              : null
+          variables.model.userId = IS_ADMIN
+            ? null
+            : (userStore.getUserInfo as UserInfoRes).id
           variables.model.expireTime = null
           variables.model.token = ''
         } else {
@@ -139,11 +133,12 @@ const TokenModal = defineComponent({
       getToken,
       changeUser,
       userStore,
+      IS_ADMIN,
       trim
     }
   },
   render() {
-    const { t, getToken, changeUser, userStore } = this
+    const { t, getToken, changeUser, IS_ADMIN } = this
 
     return (
       <div>
@@ -182,8 +177,7 @@ const TokenModal = defineComponent({
                     v-model={[this.model.expireTime, 'value']}
                   />
                 </NFormItem>
-                {(userStore.getUserInfo as UserInfoRes).userType !==
-                  'GENERAL_USER' && (
+                {IS_ADMIN && (
                   <NFormItem label={t('security.token.user')} path='userId'>
                     <NSelect
                       class='input-username'

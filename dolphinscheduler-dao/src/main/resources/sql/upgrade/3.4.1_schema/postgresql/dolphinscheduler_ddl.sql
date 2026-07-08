@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS t_ds_platform_tenant_user (
   id int NOT NULL,
   platform_tenant_id int NOT NULL,
   user_id int NOT NULL,
+  admin_flag smallint DEFAULT 0,
   create_time timestamp DEFAULT NULL,
   update_time timestamp DEFAULT NULL,
   PRIMARY KEY (id)
@@ -51,8 +52,8 @@ INSERT INTO t_ds_platform_tenant(id, tenant_code, tenant_name, description, crea
 VALUES (1, 'default', 'default', 'default platform tenant', now(), now())
 ON CONFLICT (tenant_code) DO NOTHING;
 
-INSERT INTO t_ds_platform_tenant_user(platform_tenant_id, user_id, create_time, update_time)
-SELECT 1, id, now(), now() FROM t_ds_user
+INSERT INTO t_ds_platform_tenant_user(platform_tenant_id, user_id, admin_flag, create_time, update_time)
+SELECT 1, id, CASE WHEN user_type = 0 THEN 1 ELSE 0 END, now(), now() FROM t_ds_user
 ON CONFLICT (platform_tenant_id, user_id) DO NOTHING;
 
 SELECT setval('t_ds_platform_tenant_id_sequence', (SELECT COALESCE(MAX(id), 1) FROM t_ds_platform_tenant));
@@ -62,6 +63,12 @@ ALTER TABLE t_ds_project ADD COLUMN IF NOT EXISTS platform_tenant_id int DEFAULT
 UPDATE t_ds_project SET platform_tenant_id = 1 WHERE platform_tenant_id IS NULL;
 DROP INDEX IF EXISTS unique_name;
 CREATE UNIQUE INDEX IF NOT EXISTS unique_name on t_ds_project (platform_tenant_id, name);
+
+INSERT INTO t_ds_project(name, code, description, user_id, platform_tenant_id, flag, create_time, update_time)
+SELECT '默认项目', 1000000000000000000, '', 1, 1, 1, now(), now()
+WHERE NOT EXISTS (
+  SELECT 1 FROM t_ds_project WHERE platform_tenant_id = 1 AND name = '默认项目'
+);
 
 ALTER TABLE t_ds_datasource ADD COLUMN IF NOT EXISTS platform_tenant_id int DEFAULT 1;
 UPDATE t_ds_datasource SET platform_tenant_id = 1 WHERE platform_tenant_id IS NULL;

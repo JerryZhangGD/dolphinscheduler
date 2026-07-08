@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS `t_ds_platform_tenant_user` (
   `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'key',
   `platform_tenant_id` int(11) NOT NULL COMMENT 'platform tenant id',
   `user_id` int(11) NOT NULL COMMENT 'user id',
+  `admin_flag` tinyint(4) DEFAULT 0 COMMENT '0 normal member, 1 platform tenant admin',
   `create_time` datetime DEFAULT NULL COMMENT 'create time',
   `update_time` datetime DEFAULT NULL COMMENT 'update time',
   PRIMARY KEY (`id`),
@@ -43,8 +44,8 @@ CREATE TABLE IF NOT EXISTS `t_ds_platform_tenant_user` (
 INSERT IGNORE INTO `t_ds_platform_tenant`(id, tenant_code, tenant_name, description, create_time, update_time)
 VALUES (1, 'default', 'default', 'default platform tenant', current_timestamp, current_timestamp);
 
-INSERT IGNORE INTO `t_ds_platform_tenant_user`(platform_tenant_id, user_id, create_time, update_time)
-SELECT 1, id, current_timestamp, current_timestamp FROM `t_ds_user`;
+INSERT IGNORE INTO `t_ds_platform_tenant_user`(platform_tenant_id, user_id, admin_flag, create_time, update_time)
+SELECT 1, id, CASE WHEN user_type = 0 THEN 1 ELSE 0 END, current_timestamp, current_timestamp FROM `t_ds_user`;
 
 ALTER TABLE `t_ds_project`
 ADD COLUMN `platform_tenant_id` int(11) DEFAULT 1 COMMENT 'platform tenant id' AFTER `user_id`;
@@ -53,6 +54,9 @@ UPDATE `t_ds_project` SET `platform_tenant_id` = 1 WHERE `platform_tenant_id` IS
 
 ALTER TABLE `t_ds_project` DROP INDEX `unique_name`;
 ALTER TABLE `t_ds_project` ADD UNIQUE KEY `unique_name`(`platform_tenant_id`, `name`);
+
+INSERT IGNORE INTO `t_ds_project`(name, code, description, user_id, platform_tenant_id, flag, create_time, update_time)
+VALUES ('默认项目', 1000000000000000000, '', 1, 1, 1, current_timestamp, current_timestamp);
 
 ALTER TABLE `t_ds_datasource`
 ADD COLUMN `platform_tenant_id` int(11) DEFAULT 1 COMMENT 'platform tenant id' AFTER `user_id`;
