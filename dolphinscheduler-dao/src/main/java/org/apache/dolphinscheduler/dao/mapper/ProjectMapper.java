@@ -17,6 +17,7 @@
 
 package org.apache.dolphinscheduler.dao.mapper;
 
+import org.apache.dolphinscheduler.common.thread.PlatformTenantContext;
 import org.apache.dolphinscheduler.dao.entity.Project;
 import org.apache.dolphinscheduler.dao.entity.ProjectUser;
 
@@ -64,7 +65,12 @@ public interface ProjectMapper extends BaseMapper<Project> {
      * @param projectName projectName
      * @return project
      */
-    Project queryByName(@Param("projectName") String projectName);
+    Project queryByName(@Param("projectName") String projectName,
+                        @Param("platformTenantId") Integer platformTenantId);
+
+    default Project queryByName(String projectName) {
+        return queryByName(projectName, PlatformTenantContext.getPlatformTenantId());
+    }
 
     /**
      * project page
@@ -75,7 +81,14 @@ public interface ProjectMapper extends BaseMapper<Project> {
      */
     IPage<Project> queryProjectListPaging(IPage<Project> page,
                                           @Param("projectsIds") List<Integer> projectsIds,
-                                          @Param("searchName") String searchName);
+                                          @Param("searchName") String searchName,
+                                          @Param("platformTenantId") Integer platformTenantId);
+
+    default IPage<Project> queryProjectListPaging(IPage<Project> page,
+                                                  List<Integer> projectsIds,
+                                                  String searchName) {
+        return queryProjectListPaging(page, projectsIds, searchName, PlatformTenantContext.getPlatformTenantId());
+    }
 
     /**
      *  query create project user
@@ -124,7 +137,11 @@ public interface ProjectMapper extends BaseMapper<Project> {
      * @param userId
      * @return projectList
      */
-    List<Project> queryAllProject(@Param("userId") int userId);
+    List<Project> queryAllProject(@Param("userId") int userId, @Param("platformTenantId") Integer platformTenantId);
+
+    default List<Project> queryAllProject(int userId) {
+        return queryAllProject(userId, PlatformTenantContext.getPlatformTenantId());
+    }
 
     /**
      * list authorized Projects
@@ -133,13 +150,23 @@ public interface ProjectMapper extends BaseMapper<Project> {
      * @param <T>
      * @return
      */
-    List<Project> listAuthorizedProjects(@Param("userId") int userId, @Param("projectsIds") List<Integer> projectsIds);
+    List<Project> listAuthorizedProjects(@Param("userId") int userId,
+                                         @Param("projectsIds") List<Integer> projectsIds,
+                                         @Param("platformTenantId") Integer platformTenantId);
+
+    default List<Project> listAuthorizedProjects(int userId, List<Integer> projectsIds) {
+        return listAuthorizedProjects(userId, projectsIds, PlatformTenantContext.getPlatformTenantId());
+    }
 
     /**
      * query all project for dependent node
      * @return projectList
      */
-    List<Project> queryAllProjectForDependent();
+    List<Project> queryAllProjectForDependent(@Param("platformTenantId") Integer platformTenantId);
+
+    default List<Project> queryAllProjectForDependent() {
+        return queryAllProjectForDependent(PlatformTenantContext.getPlatformTenantId());
+    }
 
     /**
      * query the project by task instance id

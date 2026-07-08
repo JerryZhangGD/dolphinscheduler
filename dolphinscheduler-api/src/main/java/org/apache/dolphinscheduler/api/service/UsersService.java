@@ -22,6 +22,7 @@ import org.apache.dolphinscheduler.common.enums.UserType;
 import org.apache.dolphinscheduler.dao.entity.User;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -32,6 +33,10 @@ public interface UsersService {
      */
     User createUser(User loginUser, String userName, String userPassword, String email,
                     int tenantId, String phone, String queue, int state) throws Exception;
+
+    User createUser(User loginUser, String userName, String userPassword, String email,
+                    int tenantId, String phone, String queue, int state,
+                    Collection<Integer> platformTenantIds) throws Exception;
 
     User createUser(String userName, String userPassword, String email,
                     int tenantId, String phone, String queue, int state);
@@ -93,6 +98,18 @@ public interface UsersService {
                     String queue,
                     int state,
                     String timeZone) throws IOException;
+
+    User updateUser(User loginUser,
+                    Integer userId,
+                    String userName,
+                    String userPassword,
+                    String email,
+                    Integer tenantId,
+                    String phone,
+                    String queue,
+                    int state,
+                    String timeZone,
+                    Collection<Integer> platformTenantIds) throws IOException;
 
     /**
      * delete user

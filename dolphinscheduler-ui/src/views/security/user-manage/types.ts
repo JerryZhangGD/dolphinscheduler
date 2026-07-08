@@ -33,6 +33,7 @@ interface IRecord {
   userType: TUserType
   tenantCode: string
   tenantId: null | number
+  platformTenants?: { id: number; tenantCode: string; tenantName: string }[]
   queueName: string
   email: string
   phone: string

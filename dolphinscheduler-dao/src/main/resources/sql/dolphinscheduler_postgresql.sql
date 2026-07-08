@@ -313,11 +313,12 @@ CREATE TABLE t_ds_datasource (
   note varchar(255) DEFAULT NULL ,
   type int NOT NULL ,
   user_id int NOT NULL ,
+  platform_tenant_id int DEFAULT 1 ,
   connection_params text NOT NULL ,
   create_time timestamp NOT NULL ,
   update_time timestamp DEFAULT NULL ,
   PRIMARY KEY (id),
-  CONSTRAINT t_ds_datasource_name_un UNIQUE (name, type)
+  CONSTRAINT t_ds_datasource_name_un UNIQUE (platform_tenant_id, name, type)
 ) ;
 
 --
@@ -601,6 +602,7 @@ CREATE TABLE t_ds_project (
   code bigint NOT NULL,
   description varchar(255) DEFAULT NULL ,
   user_id int DEFAULT NULL ,
+  platform_tenant_id int DEFAULT 1 ,
   flag int DEFAULT '1' ,
   create_time timestamp DEFAULT CURRENT_TIMESTAMP ,
   update_time timestamp DEFAULT CURRENT_TIMESTAMP ,
@@ -608,7 +610,7 @@ CREATE TABLE t_ds_project (
 ) ;
 
 create index user_id_index on t_ds_project (user_id);
-CREATE UNIQUE INDEX unique_name on t_ds_project (name);
+CREATE UNIQUE INDEX unique_name on t_ds_project (platform_tenant_id, name);
 CREATE UNIQUE INDEX unique_code on t_ds_project (code);
 
 --
@@ -807,6 +809,7 @@ DROP TABLE IF EXISTS t_ds_session;
 CREATE TABLE t_ds_session (
   id varchar(64) NOT NULL ,
   user_id int DEFAULT NULL ,
+  platform_tenant_id int DEFAULT 1 ,
   ip varchar(45) DEFAULT NULL ,
   last_login_time timestamp DEFAULT NULL ,
   PRIMARY KEY (id)
@@ -939,6 +942,38 @@ CREATE TABLE t_ds_user (
 comment on column t_ds_user.state is 'state 0:disable 1:enable';
 
 --
+-- Table structure for table t_ds_platform_tenant
+--
+
+DROP TABLE IF EXISTS t_ds_platform_tenant;
+CREATE TABLE t_ds_platform_tenant (
+  id int NOT NULL ,
+  tenant_code varchar(64) NOT NULL ,
+  tenant_name varchar(64) NOT NULL ,
+  description varchar(255) DEFAULT NULL ,
+  create_time timestamp DEFAULT NULL ,
+  update_time timestamp DEFAULT NULL ,
+  PRIMARY KEY (id)
+);
+CREATE UNIQUE INDEX unique_platform_tenant_code on t_ds_platform_tenant (tenant_code);
+
+--
+-- Table structure for table t_ds_platform_tenant_user
+--
+
+DROP TABLE IF EXISTS t_ds_platform_tenant_user;
+CREATE TABLE t_ds_platform_tenant_user (
+  id int NOT NULL ,
+  platform_tenant_id int NOT NULL ,
+  user_id int NOT NULL ,
+  create_time timestamp DEFAULT NULL ,
+  update_time timestamp DEFAULT NULL ,
+  PRIMARY KEY (id)
+);
+CREATE UNIQUE INDEX unique_platform_tenant_user on t_ds_platform_tenant_user (platform_tenant_id, user_id);
+CREATE INDEX idx_platform_tenant_user_user_id on t_ds_platform_tenant_user (user_id);
+
+--
 -- Table structure for table t_ds_version
 --
 
@@ -1062,6 +1097,14 @@ DROP SEQUENCE IF EXISTS t_ds_user_id_sequence;
 CREATE SEQUENCE  t_ds_user_id_sequence;
 ALTER TABLE t_ds_user ALTER COLUMN id SET DEFAULT NEXTVAL('t_ds_user_id_sequence');
 
+DROP SEQUENCE IF EXISTS t_ds_platform_tenant_id_sequence;
+CREATE SEQUENCE  t_ds_platform_tenant_id_sequence;
+ALTER TABLE t_ds_platform_tenant ALTER COLUMN id SET DEFAULT NEXTVAL('t_ds_platform_tenant_id_sequence');
+
+DROP SEQUENCE IF EXISTS t_ds_platform_tenant_user_id_sequence;
+CREATE SEQUENCE  t_ds_platform_tenant_user_id_sequence;
+ALTER TABLE t_ds_platform_tenant_user ALTER COLUMN id SET DEFAULT NEXTVAL('t_ds_platform_tenant_user_id_sequence');
+
 DROP SEQUENCE IF EXISTS t_ds_version_id_sequence;
 CREATE SEQUENCE  t_ds_version_id_sequence;
 ALTER TABLE t_ds_version ALTER COLUMN id SET DEFAULT NEXTVAL('t_ds_version_id_sequence');
@@ -1085,6 +1128,14 @@ ALTER TABLE t_ds_relation_project_worker_group ALTER COLUMN id SET DEFAULT NEXTV
 -- Records of t_ds_user?user : admin , password : dolphinscheduler123
 INSERT INTO t_ds_user(user_name, user_password, user_type, email, phone, tenant_id, state, create_time, update_time, time_zone)
 VALUES ('admin', '7ad2410b2f4c074479a8937a28a22b8f', '0', 'xxx@qq.com', '', '-1', 1, '2018-03-27 15:48:50', '2018-10-24 17:40:22', null);
+
+-- Records of t_ds_platform_tenant
+INSERT INTO t_ds_platform_tenant(tenant_code, tenant_name, description, create_time, update_time)
+VALUES ('default', 'default', 'default platform tenant', '2018-03-27 15:48:50', '2018-10-24 17:40:22');
+
+-- Records of t_ds_platform_tenant_user
+INSERT INTO t_ds_platform_tenant_user(platform_tenant_id, user_id, create_time, update_time)
+VALUES (1, 1, '2018-03-27 15:48:50', '2018-10-24 17:40:22');
 
 -- Records of t_ds_tenant
 INSERT INTO t_ds_tenant(id, tenant_code, description, queue_id, create_time, update_time)

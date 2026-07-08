@@ -381,11 +381,12 @@ CREATE TABLE `t_ds_datasource` (
   `note` varchar(255) DEFAULT NULL COMMENT 'description',
   `type` tinyint(4) NOT NULL COMMENT 'data source type: 0:mysql,1:postgresql,2:hive,3:spark',
   `user_id` int(11) NOT NULL COMMENT 'the creator id',
+  `platform_tenant_id` int(11) DEFAULT 1 COMMENT 'platform tenant id',
   `connection_params` text NOT NULL COMMENT 'json connection params',
   `create_time` datetime NOT NULL COMMENT 'create time',
   `update_time` datetime DEFAULT NULL COMMENT 'update time',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `t_ds_datasource_name_un` (`name`, `type`)
+  UNIQUE KEY `t_ds_datasource_name_un` (`platform_tenant_id`, `name`, `type`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8 COLLATE = utf8_bin;
 
 -- ----------------------------
@@ -659,12 +660,13 @@ CREATE TABLE `t_ds_project` (
   `code` bigint(20) NOT NULL COMMENT 'encoding',
   `description` varchar(255) DEFAULT NULL,
   `user_id` int(11) DEFAULT NULL COMMENT 'creator id',
+  `platform_tenant_id` int(11) DEFAULT 1 COMMENT 'platform tenant id',
   `flag` tinyint(4) DEFAULT '1' COMMENT '0 not available, 1 available',
   `create_time` datetime NOT NULL COMMENT 'create time',
   `update_time` datetime DEFAULT NULL COMMENT 'update time',
   PRIMARY KEY (`id`),
   KEY `user_id_index` (`user_id`) USING BTREE,
-  UNIQUE KEY `unique_name`(`name`),
+  UNIQUE KEY `unique_name`(`platform_tenant_id`, `name`),
   UNIQUE KEY `unique_code`(`code`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8 COLLATE = utf8_bin;
 
@@ -884,6 +886,7 @@ DROP TABLE IF EXISTS `t_ds_session`;
 CREATE TABLE `t_ds_session` (
   `id` varchar(64) NOT NULL COMMENT 'key',
   `user_id` int(11) DEFAULT NULL COMMENT 'user id',
+  `platform_tenant_id` int(11) DEFAULT 1 COMMENT 'platform tenant id',
   `ip` varchar(45) DEFAULT NULL COMMENT 'ip',
   `last_login_time` datetime DEFAULT NULL COMMENT 'last login time',
   PRIMARY KEY (`id`)
@@ -1032,6 +1035,36 @@ CREATE TABLE `t_ds_user` (
 -- ----------------------------
 
 -- ----------------------------
+-- Table structure for t_ds_platform_tenant
+-- ----------------------------
+DROP TABLE IF EXISTS `t_ds_platform_tenant`;
+CREATE TABLE `t_ds_platform_tenant` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'platform tenant id',
+  `tenant_code` varchar(64) NOT NULL COMMENT 'platform tenant code',
+  `tenant_name` varchar(64) NOT NULL COMMENT 'platform tenant name',
+  `description` varchar(255) DEFAULT NULL COMMENT 'description',
+  `create_time` datetime DEFAULT NULL COMMENT 'create time',
+  `update_time` datetime DEFAULT NULL COMMENT 'update time',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_platform_tenant_code` (`tenant_code`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8 COLLATE = utf8_bin;
+
+-- ----------------------------
+-- Table structure for t_ds_platform_tenant_user
+-- ----------------------------
+DROP TABLE IF EXISTS `t_ds_platform_tenant_user`;
+CREATE TABLE `t_ds_platform_tenant_user` (
+  `id` int(11) NOT NULL AUTO_INCREMENT COMMENT 'key',
+  `platform_tenant_id` int(11) NOT NULL COMMENT 'platform tenant id',
+  `user_id` int(11) NOT NULL COMMENT 'user id',
+  `create_time` datetime DEFAULT NULL COMMENT 'create time',
+  `update_time` datetime DEFAULT NULL COMMENT 'update time',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_platform_tenant_user` (`platform_tenant_id`, `user_id`),
+  KEY `idx_platform_tenant_user_user_id` (`user_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8 COLLATE = utf8_bin;
+
+-- ----------------------------
 -- Table structure for t_ds_worker_group
 -- ----------------------------
 DROP TABLE IF EXISTS `t_ds_worker_group`;
@@ -1078,6 +1111,12 @@ VALUES (NULL, 1, 'default admin warning group', 'default admin warning group', c
 -- ----------------------------
 INSERT IGNORE INTO `t_ds_user`
 VALUES ('1', 'admin', '7ad2410b2f4c074479a8937a28a22b8f', '0', 'xxx@qq.com', '', '-1', current_timestamp, current_timestamp, null, 1, null);
+
+INSERT IGNORE INTO `t_ds_platform_tenant`(id, tenant_code, tenant_name, description, create_time, update_time)
+VALUES (1, 'default', 'default', 'default platform tenant', current_timestamp, current_timestamp);
+
+INSERT IGNORE INTO `t_ds_platform_tenant_user`(id, platform_tenant_id, user_id, create_time, update_time)
+VALUES (1, 1, 1, current_timestamp, current_timestamp);
 
 -- ----------------------------
 -- Table structure for t_ds_plugin_define

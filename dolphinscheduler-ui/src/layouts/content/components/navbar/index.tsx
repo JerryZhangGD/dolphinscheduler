@@ -23,6 +23,7 @@ import { NMenu, NButton, NIcon } from 'naive-ui'
 import styles from './index.module.scss'
 import Logo from '../logo'
 import Locales from '../locales'
+import PlatformTenantSwitcher from '../platform-tenant'
 import Timezone from '../timezone'
 import User from '../user'
 import Theme from '../theme'
@@ -95,6 +96,7 @@ const Navbar = defineComponent({
           </NButton>
           <Theme />
           <Locales localesOptions={this.localesOptions} />
+          <PlatformTenantSwitcher />
           <Timezone timezoneOptions={this.timezoneOptions} />
           <User userDropdownOptions={this.userDropdownOptions} />
         </div>

@@ -124,6 +124,7 @@ public class ProjectServiceImpl extends BaseServiceImpl implements ProjectServic
                 .code(CodeGenerateUtils.genCode())
                 .description(desc)
                 .userId(loginUser.getId())
+                .platformTenantId(loginUser.getCurrentPlatformTenantId())
                 .userName(loginUser.getUserName())
                 .createTime(now)
                 .updateTime(now)
@@ -184,6 +185,7 @@ public class ProjectServiceImpl extends BaseServiceImpl implements ProjectServic
         if (project == null) {
             throw new ServiceException(Status.PROJECT_NOT_EXIST);
         }
+        checkProjectPlatformTenant(loginUser, project);
         if (!canOperatorPermissions(loginUser, new Object[]{project.getId()}, AuthorizationType.PROJECTS, permission)) {
             throw new ServiceException(Status.USER_NO_OPERATION_PROJECT_PERM, loginUser.getUserName(),
                     project.getCode());
@@ -210,6 +212,7 @@ public class ProjectServiceImpl extends BaseServiceImpl implements ProjectServic
         if (project == null) {
             throw new ServiceException(Status.PROJECT_NOT_FOUND, null);
         }
+        checkProjectPlatformTenant(loginUser, project);
         // case 1: user is admin
         if (loginUser.getUserType() == UserType.ADMIN_USER) {
             return;
@@ -222,6 +225,15 @@ public class ProjectServiceImpl extends BaseServiceImpl implements ProjectServic
         ProjectUser projectUser = projectUserDao.queryProjectRelation(project.getId(), loginUser.getId());
         if (projectUser == null || projectUser.getPerm() != Constants.DEFAULT_ADMIN_PERMISSION) {
             throw new ServiceException(Status.USER_NO_WRITE_PROJECT_PERM, loginUser.getUserName(), project.getCode());
+        }
+    }
+
+    private void checkProjectPlatformTenant(User loginUser, Project project) {
+        Integer currentPlatformTenantId = loginUser.getCurrentPlatformTenantId();
+        if (currentPlatformTenantId != null && project.getPlatformTenantId() != null
+                && !Objects.equals(currentPlatformTenantId, project.getPlatformTenantId())) {
+            throw new ServiceException(Status.USER_NO_OPERATION_PROJECT_PERM, loginUser.getUserName(),
+                    project.getCode());
         }
     }
 
@@ -554,7 +566,14 @@ public class ProjectServiceImpl extends BaseServiceImpl implements ProjectServic
 
     @Override
     public List<Project> queryProjectCreatedByUser(User loginUser) {
-        return projectDao.queryProjectCreatedByUser(loginUser.getId());
+        List<Project> projects = projectDao.queryProjectCreatedByUser(loginUser.getId());
+        Integer currentPlatformTenantId = loginUser.getCurrentPlatformTenantId();
+        if (currentPlatformTenantId == null) {
+            return projects;
+        }
+        return projects.stream()
+                .filter(project -> Objects.equals(project.getPlatformTenantId(), currentPlatformTenantId))
+                .collect(Collectors.toList());
     }
 
     /**
@@ -643,13 +662,17 @@ public class ProjectServiceImpl extends BaseServiceImpl implements ProjectServic
      * @return project list
      */
     @Override
-    public Result queryAllProjectListForDependent() {
+    public Result queryAllProjectListForDependent(User loginUser) {
         Result result = new Result<>();
         List<Project> projects =
                 projectDao.queryAllProjectForDependent();
         result.setData(projects);
         putMsg(result, Status.SUCCESS);
         return result;
+    }
+
+    public Result queryAllProjectListForDependent() {
+        return queryAllProjectListForDependent(null);
     }
 
     @Override

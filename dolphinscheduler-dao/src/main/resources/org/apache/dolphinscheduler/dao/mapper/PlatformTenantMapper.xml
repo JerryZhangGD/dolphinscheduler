@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+  ~ Licensed to the Apache Software Foundation (ASF) under one or more
+  ~ contributor license agreements.  See the NOTICE file distributed with
+  ~ this work for additional information regarding copyright ownership.
+  ~ The ASF licenses this file to You under the Apache License, Version 2.0
+  ~ (the "License"); you may not use this file except in compliance with
+  ~ the License.  You may obtain a copy of the License at
+  ~
+  ~     http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="org.apache.dolphinscheduler.dao.mapper.PlatformTenantMapper">
+    <sql id="baseSql">
+        id, tenant_code, tenant_name, description, create_time, update_time
+    </sql>
+    <sql id="baseSqlV2">
+        ${alias}.id, ${alias}.tenant_code, ${alias}.tenant_name, ${alias}.description, ${alias}.create_time, ${alias}.update_time
+    </sql>
+
+    <select id="queryByCode" resultType="org.apache.dolphinscheduler.dao.entity.PlatformTenant">
+        select
+        <include refid="baseSql"/>
+        from t_ds_platform_tenant
+        where tenant_code = #{tenantCode}
+        limit 1
+    </select>
+
+    <select id="queryTenantPaging" resultType="org.apache.dolphinscheduler.dao.entity.PlatformTenant">
+        select
+        <include refid="baseSql"/>
+        from t_ds_platform_tenant
+        where 1=1
+        <if test="searchVal != null and searchVal != ''">
+            and (tenant_code like concat('%', #{searchVal}, '%')
+            or tenant_name like concat('%', #{searchVal}, '%')
+            or description like concat('%', #{searchVal}, '%'))
+        </if>
+        order by id desc
+    </select>
+
+    <select id="queryByUserId" resultType="org.apache.dolphinscheduler.dao.entity.PlatformTenant">
+        select
+        <include refid="baseSqlV2">
+            <property name="alias" value="pt"/>
+        </include>
+        from t_ds_platform_tenant pt
+        join t_ds_platform_tenant_user ptu on pt.id = ptu.platform_tenant_id
+        where ptu.user_id = #{userId}
+        order by pt.id asc
+    </select>
+</mapper>

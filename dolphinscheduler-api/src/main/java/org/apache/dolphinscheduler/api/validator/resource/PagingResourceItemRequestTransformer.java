@@ -21,6 +21,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 import org.apache.dolphinscheduler.api.dto.resources.PagingResourceItemRequest;
 import org.apache.dolphinscheduler.api.dto.resources.QueryResourceDto;
+import org.apache.dolphinscheduler.api.utils.PlatformTenantResourceUtils;
 import org.apache.dolphinscheduler.api.validator.ITransformer;
 import org.apache.dolphinscheduler.common.enums.UserType;
 import org.apache.dolphinscheduler.dao.entity.Tenant;
@@ -66,7 +67,9 @@ public class PagingResourceItemRequestTransformer implements ITransformer<Paging
             // then will query all tenant resources
             List<String> resourceAbsolutePaths = tenantDao.queryAll()
                     .stream()
-                    .map(tenant -> storageOperator.getStorageBaseDirectory(tenant.getTenantCode(), resourceType))
+                    .map(tenant -> storageOperator.getStorageBaseDirectory(
+                            PlatformTenantResourceUtils.getStorageTenantCode(loginUser, tenant),
+                            resourceType))
                     .collect(Collectors.toList());
             return QueryResourceDto.builder()
                     .resourceAbsolutePaths(resourceAbsolutePaths)
@@ -74,7 +77,9 @@ public class PagingResourceItemRequestTransformer implements ITransformer<Paging
         } else {
             // todo: inject the tenantCode when login
             Tenant tenant = tenantDao.queryById(loginUser.getTenantId());
-            String storageBaseDirectory = storageOperator.getStorageBaseDirectory(tenant.getTenantCode(), resourceType);
+            String storageBaseDirectory = storageOperator.getStorageBaseDirectory(
+                    PlatformTenantResourceUtils.getStorageTenantCode(loginUser, tenant),
+                    resourceType);
             return QueryResourceDto.builder()
                     .resourceAbsolutePaths(Lists.newArrayList(storageBaseDirectory))
                     .build();

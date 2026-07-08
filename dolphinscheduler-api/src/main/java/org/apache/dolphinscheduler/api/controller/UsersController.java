@@ -94,12 +94,14 @@ public class UsersController extends BaseController {
                                    @RequestParam(value = "queue", required = false, defaultValue = "") String queue,
                                    @RequestParam(value = "email") String email,
                                    @RequestParam(value = "phone", required = false) String phone,
-                                   @RequestParam(value = "state", required = false) int state) throws Exception {
+                                   @RequestParam(value = "state", required = false) int state,
+                                   @RequestParam(value = "platformTenantIds", required = false) List<Integer> platformTenantIds) throws Exception {
         Result verifyRet = usersService.verifyUserName(userName);
         if (verifyRet.getCode() != Status.SUCCESS.getCode()) {
             return verifyRet;
         }
-        User user = usersService.createUser(loginUser, userName, userPassword, email, tenantId, phone, queue, state);
+        User user = usersService.createUser(loginUser, userName, userPassword, email, tenantId, phone, queue, state,
+                platformTenantIds);
         return Result.success(user);
     }
 
@@ -145,7 +147,8 @@ public class UsersController extends BaseController {
                                    @RequestParam(value = "tenantId") int tenantId,
                                    @RequestParam(value = "phone", required = false) String phone,
                                    @RequestParam(value = "state", required = false) int state,
-                                   @RequestParam(value = "timeZone", required = false) String timeZone) throws Exception {
+                                   @RequestParam(value = "timeZone", required = false) String timeZone,
+                                   @RequestParam(value = "platformTenantIds", required = false) List<Integer> platformTenantIds) throws Exception {
         User user = usersService.updateUser(loginUser,
                 id,
                 userName,
@@ -155,7 +158,8 @@ public class UsersController extends BaseController {
                 phone,
                 queue,
                 state,
-                timeZone);
+                timeZone,
+                platformTenantIds);
         return Result.success(user);
     }
 

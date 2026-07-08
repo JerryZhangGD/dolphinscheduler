@@ -53,6 +53,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -106,6 +107,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         dataSource.setName(datasourceParam.getName().trim());
         dataSource.setNote(datasourceParam.getNote());
         dataSource.setUserId(loginUser.getId());
+        dataSource.setPlatformTenantId(loginUser.getCurrentPlatformTenantId());
         dataSource.setUserName(loginUser.getUserName());
         dataSource.setType(datasourceParam.getType());
         dataSource.setConnectionParams(JSONUtils.toJsonString(connectionParam));
@@ -127,6 +129,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         if (dataSource == null) {
             throw new ServiceException(Status.RESOURCE_NOT_EXIST);
         }
+        checkDataSourcePlatformTenant(loginUser, dataSource);
 
         if (!canOperatorPermissions(loginUser, new Object[]{dataSource.getId()}, AuthorizationType.DATASOURCE,
                 DATASOURCE_UPDATE)) {
@@ -179,6 +182,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             log.error("Datasource does not exist, id:{}.", id);
             throw new ServiceException(Status.RESOURCE_NOT_EXIST);
         }
+        checkDataSourcePlatformTenant(loginUser, dataSource);
 
         if (!canOperatorPermissions(loginUser, new Object[]{id}, AuthorizationType.DATASOURCE,
                 ApiFuncIdentificationConstant.DATASOURCE)) {
@@ -285,6 +289,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         if (dataSource == null) {
             throw new ServiceException(Status.RESOURCE_NOT_EXIST);
         }
+        checkDataSourcePlatformTenant(loginUser, dataSource);
 
         if (!canOperatorPermissions(loginUser, new Object[]{id}, AuthorizationType.DATASOURCE,
                 ApiFuncIdentificationConstant.DATASOURCE)) {
@@ -304,6 +309,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         if (dataSource == null) {
             throw new ServiceException(Status.RESOURCE_NOT_EXIST);
         }
+        checkDataSourcePlatformTenant(loginUser, dataSource);
 
         if (!canOperatorPermissions(loginUser, new Object[]{datasourceId}, AuthorizationType.DATASOURCE,
                 DATASOURCE_DELETE)) {
@@ -354,6 +360,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         if (dataSource == null) {
             throw new ServiceException(Status.QUERY_DATASOURCE_ERROR);
         }
+        checkDataSourcePlatformTenant(loginUser, dataSource);
 
         if (!canOperatorPermissions(loginUser, new Object[]{datasourceId}, AuthorizationType.DATASOURCE,
                 ApiFuncIdentificationConstant.DATASOURCE)) {
@@ -424,6 +431,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         if (dataSource == null) {
             throw new ServiceException(Status.QUERY_DATASOURCE_ERROR);
         }
+        checkDataSourcePlatformTenant(loginUser, dataSource);
 
         if (!canOperatorPermissions(loginUser, new Object[]{datasourceId}, AuthorizationType.DATASOURCE,
                 ApiFuncIdentificationConstant.DATASOURCE)) {
@@ -481,6 +489,7 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
         if (dataSource == null) {
             throw new ServiceException(Status.QUERY_DATASOURCE_ERROR);
         }
+        checkDataSourcePlatformTenant(loginUser, dataSource);
 
         if (!canOperatorPermissions(loginUser, new Object[]{datasourceId}, AuthorizationType.DATASOURCE,
                 ApiFuncIdentificationConstant.DATASOURCE)) {
@@ -539,6 +548,14 @@ public class DataSourceServiceImpl extends BaseServiceImpl implements DataSource
             }
         }
         return options;
+    }
+
+    private void checkDataSourcePlatformTenant(User loginUser, DataSource dataSource) {
+        Integer currentPlatformTenantId = loginUser.getCurrentPlatformTenantId();
+        if (currentPlatformTenantId != null && dataSource.getPlatformTenantId() != null
+                && !Objects.equals(currentPlatformTenantId, dataSource.getPlatformTenantId())) {
+            throw new ServiceException(Status.USER_NO_OPERATION_PERM);
+        }
     }
 
     private String getDbSchemaPattern(DbType dbType, String schema, BaseConnectionParam connectionParam) {

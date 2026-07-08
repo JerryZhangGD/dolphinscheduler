@@ -18,11 +18,15 @@
 package org.apache.dolphinscheduler.api.interceptor;
 
 import org.apache.dolphinscheduler.api.enums.Status;
+import org.apache.dolphinscheduler.api.exceptions.ServiceException;
 import org.apache.dolphinscheduler.api.metrics.ApiServerMetrics;
 import org.apache.dolphinscheduler.api.security.Authenticator;
+import org.apache.dolphinscheduler.api.service.PlatformTenantService;
 import org.apache.dolphinscheduler.common.constants.Constants;
 import org.apache.dolphinscheduler.common.enums.Flag;
+import org.apache.dolphinscheduler.common.thread.PlatformTenantContext;
 import org.apache.dolphinscheduler.common.thread.ThreadLocalContext;
+import org.apache.dolphinscheduler.dao.entity.PlatformTenant;
 import org.apache.dolphinscheduler.dao.entity.User;
 import org.apache.dolphinscheduler.dao.repository.UserDao;
 
@@ -31,6 +35,7 @@ import org.apache.http.HttpStatus;
 
 import java.util.Date;
 
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -39,6 +44,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.ModelAndView;
+import org.springframework.web.util.WebUtils;
 
 /**
  * login interceptor, must log in first
@@ -51,6 +57,9 @@ public class LoginHandlerInterceptor implements HandlerInterceptor {
 
     @Autowired
     private Authenticator authenticator;
+
+    @Autowired
+    private PlatformTenantService platformTenantService;
 
     /**
      * Intercept the execution of a handler. Called after HandlerMapping determined
@@ -90,9 +99,18 @@ public class LoginHandlerInterceptor implements HandlerInterceptor {
             log.info(Status.USER_DISABLED.getMsg());
             return false;
         }
-        request.setAttribute(Constants.SESSION_USER, user);
-        ThreadLocalContext.setTimezone(user.getTimeZone());
-        return true;
+        try {
+            PlatformTenant currentTenant = platformTenantService.resolveCurrentTenant(user, getSessionId(request),
+                    getPlatformTenantId(request));
+            PlatformTenantContext.setPlatformTenantId(currentTenant.getId());
+            request.setAttribute(Constants.SESSION_USER, user);
+            ThreadLocalContext.setTimezone(user.getTimeZone());
+            return true;
+        } catch (ServiceException ex) {
+            response.setStatus(HttpStatus.SC_FORBIDDEN);
+            log.info("user platform tenant is invalid, userName:{}.", user.getUserName());
+            return false;
+        }
     }
 
     @Override
@@ -119,5 +137,27 @@ public class LoginHandlerInterceptor implements HandlerInterceptor {
                                 Object handler,
                                 Exception ex) {
         ThreadLocalContext.removeTimezone();
+        PlatformTenantContext.removePlatformTenantId();
+    }
+
+    private String getSessionId(HttpServletRequest request) {
+        String sessionId = request.getHeader(Constants.SESSION_ID);
+        if (StringUtils.isNotBlank(sessionId)) {
+            return sessionId;
+        }
+        Cookie cookie = WebUtils.getCookie(request, Constants.SESSION_ID);
+        return cookie == null ? null : cookie.getValue();
+    }
+
+    private Integer getPlatformTenantId(HttpServletRequest request) {
+        String platformTenantId = request.getHeader(Constants.PLATFORM_TENANT_ID);
+        if (StringUtils.isBlank(platformTenantId)) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(platformTenantId);
+        } catch (NumberFormatException ex) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, Constants.PLATFORM_TENANT_ID);
+        }
     }
 }

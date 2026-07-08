@@ -76,6 +76,7 @@ const err = (error: unknown): Promise<never> => {
     userStore.setSecurityConfigType('')
     userStore.setUserInfo({})
     userStore.setBaseResDir('')
+    userStore.setPlatformTenantId(null)
     router.push({ path: '/login' })
   }
 
@@ -84,6 +85,9 @@ const err = (error: unknown): Promise<never> => {
 
 service.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   config.headers.set('sessionId', userStore.getSessionId)
+  if (userStore.getPlatformTenantId) {
+    config.headers.set('platformTenantId', userStore.getPlatformTenantId)
+  }
   const language = cookies.get('language')
   if (language) config.headers.set('language', language)
 

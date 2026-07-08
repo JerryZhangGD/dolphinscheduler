@@ -28,19 +28,38 @@ public interface DataSourceDao extends IDao<DataSource> {
 
     List<DataSource> queryDataSourceByType(int userId, Integer type);
 
+    List<DataSource> queryDataSourceByType(int userId, Integer type, Integer platformTenantId);
+
     IPage<DataSource> queryDataSourcePaging(IPage<DataSource> page, int userId, String name);
+
+    IPage<DataSource> queryDataSourcePaging(IPage<DataSource> page, int userId, String name, Integer platformTenantId);
 
     List<DataSource> queryDataSourceByName(String name);
 
+    List<DataSource> queryDataSourceByName(String name, Integer platformTenantId);
+
     List<DataSource> queryAuthedDatasource(int userId);
+
+    List<DataSource> queryAuthedDatasource(int userId, Integer platformTenantId);
 
     List<DataSource> queryDatasourceExceptUserId(int userId);
 
+    List<DataSource> queryDatasourceExceptUserId(int userId, Integer platformTenantId);
+
     <T> List<DataSource> listAuthorizedDataSource(int userId, T[] dataSourceIds);
+
+    <T> List<DataSource> listAuthorizedDataSource(int userId, T[] dataSourceIds, Integer platformTenantId);
 
     IPage<DataSource> queryDataSourcePagingByIds(Page<DataSource> dataSourcePage,
                                                  List<Integer> dataSourceIds,
                                                  String name);
 
+    IPage<DataSource> queryDataSourcePagingByIds(Page<DataSource> dataSourcePage,
+                                                 List<Integer> dataSourceIds,
+                                                 String name,
+                                                 Integer platformTenantId);
+
     List<DataSource> queryByUserId(int userId);
+
+    List<DataSource> queryByUserId(int userId, Integer platformTenantId);
 }

@@ -25,6 +25,9 @@ export function useUserinfo() {
   const getUserInfo = async () => {
     const userInfoRes: UserInfoRes = await getUserInfoApi()
     await userStore.setUserInfo(userInfoRes)
+    await userStore.setPlatformTenantId(
+      userInfoRes.currentPlatformTenantId || null
+    )
   }
 
   return { getUserInfo }

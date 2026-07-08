@@ -19,13 +19,16 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
 <mapper namespace="org.apache.dolphinscheduler.dao.mapper.DataSourceMapper">
     <sql id="baseSql">
-        id, name, note, type, user_id, connection_params, create_time, update_time
+        id, name, note, type, user_id, platform_tenant_id, connection_params, create_time, update_time
     </sql>
     <select id="queryDataSourceByType" resultType="org.apache.dolphinscheduler.dao.entity.DataSource">
         select
         <include refid="baseSql"/>
         from t_ds_datasource
         where type=#{type}
+        <if test="platformTenantId != null">
+            and platform_tenant_id = #{platformTenantId}
+        </if>
         <if test="userId != 0">
             and id in
             (select datasource_id
@@ -40,12 +43,15 @@
 
     <select id="selectPaging" resultType="org.apache.dolphinscheduler.dao.entity.DataSource">
         select
-        d.id, d.name, d.note, d.type, d.user_id, connection_params, d.create_time, d.update_time
+        d.id, d.name, d.note, d.type, d.user_id, d.platform_tenant_id, connection_params, d.create_time, d.update_time
         ,
         u.user_name as user_name
         from t_ds_datasource d
         join t_ds_user u on d.user_id = u.id
         where 1 =1
+        <if test="platformTenantId != null">
+            and d.platform_tenant_id = #{platformTenantId}
+        </if>
         <if test="userId != 0">
             and d.id in
             (select datasource_id
@@ -66,17 +72,26 @@
         <include refid="baseSql"/>
         from t_ds_datasource
         where name=#{name}
+        <if test="platformTenantId != null">
+            and platform_tenant_id = #{platformTenantId}
+        </if>
     </select>
     <select id="queryAuthedDatasource" resultType="org.apache.dolphinscheduler.dao.entity.DataSource">
-        select ds.id, ds.name, ds.note, ds.type, ds.user_id, ds.connection_params, ds.create_time, ds.update_time
+        select ds.id, ds.name, ds.note, ds.type, ds.user_id, ds.platform_tenant_id, ds.connection_params, ds.create_time, ds.update_time
         from t_ds_datasource ds, t_ds_relation_datasource_user rel
         where ds.id = rel.datasource_id AND rel.user_id = #{userId}
+        <if test="platformTenantId != null">
+            and ds.platform_tenant_id = #{platformTenantId}
+        </if>
     </select>
     <select id="queryDatasourceExceptUserId" resultType="org.apache.dolphinscheduler.dao.entity.DataSource">
         select
         <include refid="baseSql"/>
         from t_ds_datasource
         where user_id <![CDATA[ <> ]]> #{userId}
+        <if test="platformTenantId != null">
+            and platform_tenant_id = #{platformTenantId}
+        </if>
     </select>
     <select id="listAllDataSourceByType" resultType="org.apache.dolphinscheduler.dao.entity.DataSource">
         select
@@ -89,6 +104,9 @@
         <include refid="baseSql"/>
         from t_ds_datasource
         where 1=1
+        <if test="platformTenantId != null">
+            and platform_tenant_id = #{platformTenantId}
+        </if>
         <if test="userId != 0">
             and id in (select datasource_id from t_ds_relation_datasource_user where user_id=#{userId}
             union select id as datasource_id from t_ds_datasource where user_id=#{userId})
@@ -115,12 +133,15 @@
 
     <select id="selectPagingByIds" resultType="org.apache.dolphinscheduler.dao.entity.DataSource">
         select
-        d.id, d.name, d.note, d.type, d.user_id, connection_params, d.create_time, d.update_time
+        d.id, d.name, d.note, d.type, d.user_id, d.platform_tenant_id, connection_params, d.create_time, d.update_time
         ,
         u.user_name as user_name
         from t_ds_datasource d
         join t_ds_user u on d.user_id = u.id
         where 1 =1
+        <if test="platformTenantId != null">
+            and d.platform_tenant_id = #{platformTenantId}
+        </if>
         <if test="name != null and name != ''">
             and d.name like concat ('%', #{name}, '%')
         </if>

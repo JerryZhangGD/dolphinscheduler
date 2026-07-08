@@ -43,6 +43,7 @@ export default {
   statistical_manage: 'Statistical Manage',
   statistics: 'Statistics',
   audit_log: 'Audit Log',
+  platform_tenant_manage: 'Platform Tenant Manage',
   tenant_manage: 'Tenant Manage',
   user_manage: 'User Manage',
   alarm_group_manage: 'Alarm Group Manage',

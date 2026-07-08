@@ -47,6 +47,7 @@ import org.apache.dolphinscheduler.api.exceptions.ServiceException;
 import org.apache.dolphinscheduler.api.metrics.ApiServerMetrics;
 import org.apache.dolphinscheduler.api.service.ResourcesService;
 import org.apache.dolphinscheduler.api.utils.PageInfo;
+import org.apache.dolphinscheduler.api.utils.PlatformTenantResourceUtils;
 import org.apache.dolphinscheduler.api.validator.resource.CreateDirectoryDtoValidator;
 import org.apache.dolphinscheduler.api.validator.resource.CreateDirectoryRequestTransformer;
 import org.apache.dolphinscheduler.api.validator.resource.CreateFileDtoValidator;
@@ -292,7 +293,9 @@ public class ResourcesServiceImpl extends BaseServiceImpl implements ResourcesSe
     public List<ResourceComponent> queryResourceFiles(User loginUser, ResourceType resourceType) {
         Tenant tenant = tenantDao.queryOptionalById(loginUser.getTenantId())
                 .orElseThrow(() -> new ServiceException(Status.TENANT_NOT_EXIST, loginUser.getTenantId()));
-        String storageBaseDirectory = storageOperator.getStorageBaseDirectory(tenant.getTenantCode(), resourceType);
+        String storageBaseDirectory = storageOperator.getStorageBaseDirectory(
+                PlatformTenantResourceUtils.getStorageTenantCode(loginUser, tenant),
+                resourceType);
         List<StorageEntity> allResourceFiles = storageOperator.listFileStorageEntityRecursively(storageBaseDirectory);
 
         Visitor visitor = new ResourceTreeVisitor(allResourceFiles);
@@ -399,7 +402,9 @@ public class ResourcesServiceImpl extends BaseServiceImpl implements ResourcesSe
 
         Tenant tenant = tenantDao.queryOptionalById(user.getTenantId())
                 .orElseThrow(() -> new ServiceException(Status.CURRENT_LOGIN_USER_TENANT_NOT_EXIST));
-        return storageOperator.getStorageBaseDirectory(tenant.getTenantCode(), type);
+        return storageOperator.getStorageBaseDirectory(
+                PlatformTenantResourceUtils.getStorageTenantCode(loginUser, tenant),
+                type);
     }
 
     // Copy the file to the local file system and return the local file absolute path

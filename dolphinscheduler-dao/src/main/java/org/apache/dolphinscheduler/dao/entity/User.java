@@ -20,6 +20,7 @@ package org.apache.dolphinscheduler.dao.entity;
 import org.apache.dolphinscheduler.common.enums.UserType;
 
 import java.util.Date;
+import java.util.List;
 
 import lombok.Data;
 
@@ -57,6 +58,18 @@ public class User {
 
     @TableField(exist = false)
     private String alertGroup;
+
+    @TableField(exist = false)
+    private Integer currentPlatformTenantId;
+
+    @TableField(exist = false)
+    private String currentPlatformTenantCode;
+
+    @TableField(exist = false)
+    private String currentPlatformTenantName;
+
+    @TableField(exist = false)
+    private List<PlatformTenant> platformTenants;
 
     private String queue;
 

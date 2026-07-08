@@ -43,6 +43,7 @@ export default {
   db: 'DB',
   statistical_manage: '统计管理',
   statistics: 'Statistics',
+  platform_tenant_manage: '平台租户管理',
   audit_log: '审计日志',
   tenant_manage: '租户管理',
   user_manage: '用户管理',

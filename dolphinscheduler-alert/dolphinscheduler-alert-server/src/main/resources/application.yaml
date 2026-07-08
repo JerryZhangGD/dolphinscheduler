@@ -19,17 +19,17 @@ spring:
   application:
     name: alert-server
   profiles:
-    active: postgresql
+    active: mysql
   jackson:
     time-zone: UTC
     date-format: "yyyy-MM-dd HH:mm:ss"
   banner:
     charset: UTF-8
   datasource:
-    driver-class-name: org.postgresql.Driver
-    url: jdbc:postgresql://127.0.0.1:5432/dolphinscheduler
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://10.1.7.171:30014/dolphin_local
     username: root
-    password: root
+    password: Fi4vLJymOH
     hikari:
       connection-test-query: select 1
       pool-name: DolphinScheduler
@@ -86,8 +86,8 @@ alert:
 registry:
   type: zookeeper
   zookeeper:
-    namespace: dolphinscheduler
-    connect-string: localhost:2181
+    namespace: dolphin_local
+    connect-string: 10.1.7.171:2181
     retry-policy:
       base-sleep-time: 1s
       max-sleep: 3s
@@ -106,6 +106,6 @@ spring:
       on-profile: mysql
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://127.0.0.1:3306/dolphinscheduler
+    url: jdbc:mysql://10.1.7.171:30014/dolphin_local
     username: root
-    password: root
+    password: Fi4vLJymOH

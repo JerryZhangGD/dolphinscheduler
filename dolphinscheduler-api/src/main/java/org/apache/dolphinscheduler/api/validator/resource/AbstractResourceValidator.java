@@ -20,6 +20,7 @@ package org.apache.dolphinscheduler.api.validator.resource;
 import org.apache.dolphinscheduler.api.dto.resources.AbstractResourceDto;
 import org.apache.dolphinscheduler.api.enums.Status;
 import org.apache.dolphinscheduler.api.exceptions.ServiceException;
+import org.apache.dolphinscheduler.api.utils.PlatformTenantResourceUtils;
 import org.apache.dolphinscheduler.api.validator.IValidator;
 import org.apache.dolphinscheduler.common.enums.UserType;
 import org.apache.dolphinscheduler.common.utils.FileUtils;
@@ -33,7 +34,9 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.web.multipart.MultipartFile;
 
@@ -113,9 +116,6 @@ public abstract class AbstractResourceValidator<T> implements IValidator<T> {
     }
 
     public void exceptionUserNoResourcePermission(User user, String resourceAbsolutePath) {
-        if (user.getUserType() == UserType.ADMIN_USER) {
-            return;
-        }
         // check if the user have resource tenant permission
         // Parse the resource path to get the tenant code
         ResourceMetadata resourceMetaData = storageOperator.getResourceMetaData(resourceAbsolutePath);
@@ -124,13 +124,21 @@ public abstract class AbstractResourceValidator<T> implements IValidator<T> {
             throw new ServiceException("Invalidated resource path: " + resourceAbsolutePath);
         }
 
-        // todo: inject the tenant when login
-        Tenant tenant = tenantDao.queryOptionalById(user.getTenantId())
-                .orElseThrow(() -> new ServiceException(Status.TENANT_NOT_EXIST, user.getTenantId()));
-        String userTenant = tenant.getTenantCode();
-        if (!userTenant.equals(resourceMetaData.getTenant())) {
+        Set<String> storageTenantCodes;
+        if (user.getUserType() == UserType.ADMIN_USER) {
+            List<Tenant> tenants = tenantDao.queryAll();
+            storageTenantCodes = tenants.stream()
+                    .map(tenant -> PlatformTenantResourceUtils.getStorageTenantCode(user, tenant))
+                    .collect(Collectors.toSet());
+        } else {
+            Tenant tenant = tenantDao.queryOptionalById(user.getTenantId())
+                    .orElseThrow(() -> new ServiceException(Status.TENANT_NOT_EXIST, user.getTenantId()));
+            storageTenantCodes = new HashSet<>(
+                    Arrays.asList(PlatformTenantResourceUtils.getStorageTenantCode(user, tenant)));
+        }
+        if (!storageTenantCodes.contains(resourceMetaData.getTenant())) {
             throw new ServiceException(
-                    "The user's tenant is " + userTenant + " have no permission to access the resource: "
+                    "The current platform tenant have no permission to access the resource: "
                             + resourceAbsolutePath);
         }
     }

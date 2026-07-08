@@ -21,6 +21,7 @@ interface UserState {
   sessionId: string
   securityConfigType: string
   baseResDir: string
+  platformTenantId: number | null
   userInfo: UserInfoRes | {}
 }
 

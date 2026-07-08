@@ -165,7 +165,11 @@ public interface ProjectService {
      * the project list in dependent node's permissions should not be restricted
      * @return project list
      */
-    Result queryAllProjectListForDependent();
+    Result queryAllProjectListForDependent(User loginUser);
+
+    default Result queryAllProjectListForDependent() {
+        return queryAllProjectListForDependent(null);
+    }
 
     List<Long> getAuthorizedProjectCodes(User loginUser);
 }

@@ -243,6 +243,12 @@ public final class Constants {
 
     public static final String SESSION_ID = "sessionId";
 
+    public static final String PLATFORM_TENANT_ID = "platformTenantId";
+
+    public static final int DEFAULT_PLATFORM_TENANT_ID = 1;
+
+    public static final String DEFAULT_PLATFORM_TENANT_CODE = "default";
+
     /**
      * locale
      */

@@ -81,6 +81,7 @@ public class SessionServiceImpl extends BaseServiceImpl implements SessionServic
         Session newSession = Session.builder()
                 .id(UUID.randomUUID().toString())
                 .userId(user.getId())
+                .platformTenantId(Constants.DEFAULT_PLATFORM_TENANT_ID)
                 .lastLoginTime(new Date())
                 .build();
         sessionDao.insert(newSession);

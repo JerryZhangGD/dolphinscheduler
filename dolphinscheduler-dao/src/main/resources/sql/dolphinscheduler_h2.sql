@@ -374,11 +374,12 @@ CREATE TABLE t_ds_datasource
     note              varchar(255) DEFAULT NULL,
     type              tinyint(4) NOT NULL,
     user_id           int(11) NOT NULL,
+    platform_tenant_id int(11) DEFAULT 1,
     connection_params text        NOT NULL,
     create_time       datetime    NOT NULL,
     update_time       datetime     DEFAULT NULL,
     PRIMARY KEY (id),
-    UNIQUE KEY t_ds_datasource_name_un (name, type)
+    UNIQUE KEY t_ds_datasource_name_un (platform_tenant_id, name, type)
 );
 
 -- ----------------------------
@@ -650,11 +651,12 @@ CREATE TABLE t_ds_project
     code        bigint(20) NOT NULL,
     description varchar(255) DEFAULT NULL,
     user_id     int(11) DEFAULT NULL,
+    platform_tenant_id int(11) DEFAULT 1,
     flag        tinyint(4) DEFAULT '1',
     create_time datetime NOT NULL,
     update_time datetime     DEFAULT NULL,
     PRIMARY KEY (id),
-    UNIQUE KEY unique_name (name),
+    UNIQUE KEY unique_name (platform_tenant_id, name),
     UNIQUE KEY unique_code (code)
 );
 
@@ -884,6 +886,7 @@ CREATE TABLE t_ds_session
 (
     id              varchar(64) NOT NULL,
     user_id         int(11) DEFAULT NULL,
+    platform_tenant_id int(11) DEFAULT 1,
     ip              varchar(45) DEFAULT NULL,
     last_login_time datetime    DEFAULT NULL,
     PRIMARY KEY (id)
@@ -1032,6 +1035,38 @@ CREATE TABLE t_ds_user
 -- ----------------------------
 
 -- ----------------------------
+-- Table structure for t_ds_platform_tenant
+-- ----------------------------
+DROP TABLE IF EXISTS t_ds_platform_tenant CASCADE;
+CREATE TABLE t_ds_platform_tenant
+(
+    id          int(11) NOT NULL AUTO_INCREMENT,
+    tenant_code varchar(64) NOT NULL,
+    tenant_name varchar(64) NOT NULL,
+    description varchar(255) DEFAULT NULL,
+    create_time datetime DEFAULT NULL,
+    update_time datetime DEFAULT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_platform_tenant_code (tenant_code)
+);
+
+-- ----------------------------
+-- Table structure for t_ds_platform_tenant_user
+-- ----------------------------
+DROP TABLE IF EXISTS t_ds_platform_tenant_user CASCADE;
+CREATE TABLE t_ds_platform_tenant_user
+(
+    id                 int(11) NOT NULL AUTO_INCREMENT,
+    platform_tenant_id int(11) NOT NULL,
+    user_id            int(11) NOT NULL,
+    create_time        datetime DEFAULT NULL,
+    update_time        datetime DEFAULT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_platform_tenant_user (platform_tenant_id, user_id),
+    KEY idx_platform_tenant_user_user_id (user_id)
+);
+
+-- ----------------------------
 -- Table structure for t_ds_worker_group
 -- ----------------------------
 DROP TABLE IF EXISTS t_ds_worker_group CASCADE;
@@ -1098,6 +1133,12 @@ VALUES (NULL, 1, 'default admin warning group', 'default admin warning group', '
 INSERT INTO t_ds_user
 VALUES ('1', 'admin', '7ad2410b2f4c074479a8937a28a22b8f', '0', 'xxx@qq.com', '', '-1', '2018-03-27 15:48:50',
         '2018-10-24 17:40:22', null, 1, null);
+
+INSERT INTO t_ds_platform_tenant
+VALUES ('1', 'default', 'default', 'default platform tenant', '2018-03-27 15:48:50', '2018-10-24 17:40:22');
+
+INSERT INTO t_ds_platform_tenant_user
+VALUES ('1', '1', '1', '2018-03-27 15:48:50', '2018-10-24 17:40:22');
 
 -- ----------------------------
 -- Table structure for t_ds_plugin_define

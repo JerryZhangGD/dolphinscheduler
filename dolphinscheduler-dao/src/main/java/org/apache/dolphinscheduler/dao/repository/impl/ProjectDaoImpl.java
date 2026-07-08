@@ -17,6 +17,7 @@
 
 package org.apache.dolphinscheduler.dao.repository.impl;
 
+import org.apache.dolphinscheduler.common.thread.PlatformTenantContext;
 import org.apache.dolphinscheduler.dao.entity.Project;
 import org.apache.dolphinscheduler.dao.entity.ProjectUser;
 import org.apache.dolphinscheduler.dao.mapper.ProjectMapper;
@@ -56,14 +57,27 @@ public class ProjectDaoImpl extends BaseDao<Project, ProjectMapper> implements P
 
     @Override
     public Project queryByName(String projectName) {
-        return mybatisMapper.queryByName(projectName);
+        return queryByName(projectName, PlatformTenantContext.getPlatformTenantId());
+    }
+
+    @Override
+    public Project queryByName(String projectName, Integer platformTenantId) {
+        return mybatisMapper.queryByName(projectName, platformTenantId);
     }
 
     @Override
     public IPage<Project> queryProjectListPaging(IPage<Project> page,
                                                  List<Integer> projectsIds,
                                                  String searchName) {
-        return mybatisMapper.queryProjectListPaging(page, projectsIds, searchName);
+        return queryProjectListPaging(page, projectsIds, searchName, PlatformTenantContext.getPlatformTenantId());
+    }
+
+    @Override
+    public IPage<Project> queryProjectListPaging(IPage<Project> page,
+                                                 List<Integer> projectsIds,
+                                                 String searchName,
+                                                 Integer platformTenantId) {
+        return mybatisMapper.queryProjectListPaging(page, projectsIds, searchName, platformTenantId);
     }
 
     @Override
@@ -88,17 +102,32 @@ public class ProjectDaoImpl extends BaseDao<Project, ProjectMapper> implements P
 
     @Override
     public List<Project> queryAllProject(int userId) {
-        return mybatisMapper.queryAllProject(userId);
+        return queryAllProject(userId, PlatformTenantContext.getPlatformTenantId());
+    }
+
+    @Override
+    public List<Project> queryAllProject(int userId, Integer platformTenantId) {
+        return mybatisMapper.queryAllProject(userId, platformTenantId);
     }
 
     @Override
     public List<Project> listAuthorizedProjects(int userId, List<Integer> projectsIds) {
-        return mybatisMapper.listAuthorizedProjects(userId, projectsIds);
+        return listAuthorizedProjects(userId, projectsIds, PlatformTenantContext.getPlatformTenantId());
+    }
+
+    @Override
+    public List<Project> listAuthorizedProjects(int userId, List<Integer> projectsIds, Integer platformTenantId) {
+        return mybatisMapper.listAuthorizedProjects(userId, projectsIds, platformTenantId);
     }
 
     @Override
     public List<Project> queryAllProjectForDependent() {
-        return mybatisMapper.queryAllProjectForDependent();
+        return queryAllProjectForDependent(PlatformTenantContext.getPlatformTenantId());
+    }
+
+    @Override
+    public List<Project> queryAllProjectForDependent(Integer platformTenantId) {
+        return mybatisMapper.queryAllProjectForDependent(platformTenantId);
     }
 
     @Override

@@ -30,8 +30,8 @@ spring:
 registry:
   type: zookeeper
   zookeeper:
-    namespace: dolphinscheduler
-    connect-string: localhost:2181
+    namespace: dolphin_local
+    connect-string: 10.1.7.171:2181
     retry-policy:
       base-sleep-time: 1s
       max-sleep: 3s

@@ -17,6 +17,7 @@
 
 package org.apache.dolphinscheduler.dao.mapper;
 
+import org.apache.dolphinscheduler.common.thread.PlatformTenantContext;
 import org.apache.dolphinscheduler.dao.entity.DataSource;
 
 import org.apache.ibatis.annotations.Param;
@@ -38,7 +39,13 @@ public interface DataSourceMapper extends BaseMapper<DataSource> {
      * @param type type
      * @return datasource list
      */
-    List<DataSource> queryDataSourceByType(@Param("userId") int userId, @Param("type") Integer type);
+    List<DataSource> queryDataSourceByType(@Param("userId") int userId,
+                                           @Param("type") Integer type,
+                                           @Param("platformTenantId") Integer platformTenantId);
+
+    default List<DataSource> queryDataSourceByType(int userId, Integer type) {
+        return queryDataSourceByType(userId, type, PlatformTenantContext.getPlatformTenantId());
+    }
 
     /**
      * datasource page
@@ -49,28 +56,48 @@ public interface DataSourceMapper extends BaseMapper<DataSource> {
      */
     IPage<DataSource> selectPaging(IPage<DataSource> page,
                                    @Param("userId") int userId,
-                                   @Param("name") String name);
+                                   @Param("name") String name,
+                                   @Param("platformTenantId") Integer platformTenantId);
+
+    default IPage<DataSource> selectPaging(IPage<DataSource> page, int userId, String name) {
+        return selectPaging(page, userId, name, PlatformTenantContext.getPlatformTenantId());
+    }
 
     /**
      * query datasource by name
      * @param name name
      * @return datasource list
      */
-    List<DataSource> queryDataSourceByName(@Param("name") String name);
+    List<DataSource> queryDataSourceByName(@Param("name") String name,
+                                           @Param("platformTenantId") Integer platformTenantId);
+
+    default List<DataSource> queryDataSourceByName(String name) {
+        return queryDataSourceByName(name, PlatformTenantContext.getPlatformTenantId());
+    }
 
     /**
      * query authed datasource
      * @param userId userId
      * @return datasource list
      */
-    List<DataSource> queryAuthedDatasource(@Param("userId") int userId);
+    List<DataSource> queryAuthedDatasource(@Param("userId") int userId,
+                                           @Param("platformTenantId") Integer platformTenantId);
+
+    default List<DataSource> queryAuthedDatasource(int userId) {
+        return queryAuthedDatasource(userId, PlatformTenantContext.getPlatformTenantId());
+    }
 
     /**
      * query datasource except userId
      * @param userId userId
      * @return datasource list
      */
-    List<DataSource> queryDatasourceExceptUserId(@Param("userId") int userId);
+    List<DataSource> queryDatasourceExceptUserId(@Param("userId") int userId,
+                                                 @Param("platformTenantId") Integer platformTenantId);
+
+    default List<DataSource> queryDatasourceExceptUserId(int userId) {
+        return queryDatasourceExceptUserId(userId, PlatformTenantContext.getPlatformTenantId());
+    }
 
     /**
      * list all datasource by type
@@ -88,7 +115,12 @@ public interface DataSourceMapper extends BaseMapper<DataSource> {
      * @return datasource list
      */
     <T> List<DataSource> listAuthorizedDataSource(@Param("userId") int userId,
-                                                  @Param("dataSourceIds") T[] dataSourceIds);
+                                                  @Param("dataSourceIds") T[] dataSourceIds,
+                                                  @Param("platformTenantId") Integer platformTenantId);
+
+    default <T> List<DataSource> listAuthorizedDataSource(int userId, T[] dataSourceIds) {
+        return listAuthorizedDataSource(userId, dataSourceIds, PlatformTenantContext.getPlatformTenantId());
+    }
 
     /**
      * query datasource by name and user id
@@ -107,5 +139,12 @@ public interface DataSourceMapper extends BaseMapper<DataSource> {
      */
     IPage<DataSource> selectPagingByIds(Page<DataSource> dataSourcePage,
                                         @Param("dataSourceIds") List<Integer> dataSourceIds,
-                                        @Param("name") String name);
+                                        @Param("name") String name,
+                                        @Param("platformTenantId") Integer platformTenantId);
+
+    default IPage<DataSource> selectPagingByIds(Page<DataSource> dataSourcePage,
+                                                List<Integer> dataSourceIds,
+                                                String name) {
+        return selectPagingByIds(dataSourcePage, dataSourceIds, name, PlatformTenantContext.getPlatformTenantId());
+    }
 }

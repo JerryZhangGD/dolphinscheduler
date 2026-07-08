@@ -42,6 +42,8 @@ public class Session {
 
     private Date lastLoginTime;
 
+    private Integer platformTenantId;
+
     // We will not bind session with ip
     @Deprecated
     private String ip;

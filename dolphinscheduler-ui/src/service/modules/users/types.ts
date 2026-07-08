@@ -30,6 +30,7 @@ interface AlertGroupIdReq {
 interface UserReq {
   email: string
   tenantId: number | null
+  platformTenantIds?: number[]
   userName: string
   userPassword: string
   phone?: string
@@ -91,6 +92,10 @@ interface RegisterUserReq {
 
 interface UserInfoRes extends UserReq, IdReq {
   userType: string
+  currentPlatformTenantId?: number
+  currentPlatformTenantCode?: string
+  currentPlatformTenantName?: string
+  platformTenants?: PlatformTenant[]
   tenantCode?: any
   queueName?: any
   alertGroup?: any
@@ -106,6 +111,7 @@ interface UserListRes {
   phone: string
   userType: string
   tenantId: number
+  platformTenants?: PlatformTenant[]
   state: number
   tenantCode?: any
   queueName?: any
@@ -113,6 +119,15 @@ interface UserListRes {
   queue: string
   createTime: string
   updateTime: string
+}
+
+interface PlatformTenant {
+  id: number
+  tenantCode: string
+  tenantName: string
+  description?: string
+  createTime?: string
+  updateTime?: string
 }
 
 export {
@@ -131,5 +146,6 @@ export {
   ListReq,
   RegisterUserReq,
   UserInfoRes,
-  UserListRes
+  UserListRes,
+  PlatformTenant
 }

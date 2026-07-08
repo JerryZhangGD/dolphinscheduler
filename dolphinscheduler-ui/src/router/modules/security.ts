@@ -41,6 +41,17 @@ export default {
       }
     },
     {
+      path: '/security/platform-tenant-manage',
+      name: 'platform-tenant-manage',
+      component: components['security-platform-tenant-manage'],
+      meta: {
+        title: 'Platform Tenant Manage',
+        activeMenu: 'security',
+        showSide: true,
+        auth: ['ADMIN_USER']
+      }
+    },
+    {
       path: '/security/user-manage',
       name: 'user-manage',
       component: components['security-user-manage'],

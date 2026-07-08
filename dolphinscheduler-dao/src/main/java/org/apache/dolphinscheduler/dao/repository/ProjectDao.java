@@ -35,9 +35,16 @@ public interface ProjectDao extends IDao<Project> {
 
     Project queryByName(String projectName);
 
+    Project queryByName(String projectName, Integer platformTenantId);
+
     IPage<Project> queryProjectListPaging(IPage<Project> page,
                                           List<Integer> projectsIds,
                                           String searchName);
+
+    IPage<Project> queryProjectListPaging(IPage<Project> page,
+                                          List<Integer> projectsIds,
+                                          String searchName,
+                                          Integer platformTenantId);
 
     List<Project> queryProjectCreatedByUser(int userId);
 
@@ -49,9 +56,15 @@ public interface ProjectDao extends IDao<Project> {
 
     List<Project> queryAllProject(int userId);
 
+    List<Project> queryAllProject(int userId, Integer platformTenantId);
+
     List<Project> listAuthorizedProjects(int userId, List<Integer> projectsIds);
 
+    List<Project> listAuthorizedProjects(int userId, List<Integer> projectsIds, Integer platformTenantId);
+
     List<Project> queryAllProjectForDependent();
+
+    List<Project> queryAllProjectForDependent(Integer platformTenantId);
 
     Project queryProjectByTaskInstanceId(int taskInstanceId);
 }

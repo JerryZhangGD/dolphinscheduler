@@ -19,10 +19,10 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
 <mapper namespace="org.apache.dolphinscheduler.dao.mapper.ProjectMapper">
     <sql id="baseSql">
-        id, name, code, description, user_id, flag, create_time, update_time
+        id, name, code, description, user_id, platform_tenant_id, flag, create_time, update_time
     </sql>
     <sql id="baseSqlV2">
-        ${alias}.id, ${alias}.name, ${alias}.code, ${alias}.description, ${alias}.user_id, ${alias}.flag, ${alias}.create_time, ${alias}.update_time
+        ${alias}.id, ${alias}.name, ${alias}.code, ${alias}.description, ${alias}.user_id, ${alias}.platform_tenant_id, ${alias}.flag, ${alias}.create_time, ${alias}.update_time
     </sql>
 
     <select id="queryByCode" resultType="org.apache.dolphinscheduler.dao.entity.Project">
@@ -78,6 +78,9 @@
         from t_ds_project p
         join t_ds_user u on p.user_id = u.id
         where p.name = #{projectName}
+        <if test="platformTenantId != null">
+            and p.platform_tenant_id = #{platformTenantId}
+        </if>
         limit 1
     </select>
     <select id="queryProjectListPaging" resultType="org.apache.dolphinscheduler.dao.entity.Project">
@@ -92,6 +95,9 @@
             <foreach item="id" index="index" collection="projectsIds" open="(" separator="," close=")">
                 #{id}
             </foreach>
+        </if>
+        <if test="platformTenantId != null">
+            and p.platform_tenant_id = #{platformTenantId}
         </if>
         <if test="searchName!=null and searchName != ''">
             AND (p.name LIKE concat('%', #{searchName}, '%')
@@ -162,6 +168,9 @@
         <if test="userId != 0">
             and user_id = #{userId}
         </if>
+        <if test="platformTenantId != null">
+            and platform_tenant_id = #{platformTenantId}
+        </if>
     </select>
 
     <select id="listAuthorizedProjects" resultType="org.apache.dolphinscheduler.dao.entity.Project">
@@ -172,6 +181,9 @@
         <if test="userId != 0">
             and  dp.id in (select project_id from t_ds_relation_project_user  where user_id=#{userId}
             union select id as project_id  from t_ds_project where user_id=#{userId})
+        </if>
+        <if test="platformTenantId != null">
+            and dp.platform_tenant_id = #{platformTenantId}
         </if>
         <if test="projectsIds != null and projectsIds.size() > 0">
             and dp.id  in
@@ -184,6 +196,10 @@
     <select id="queryAllProjectForDependent" resultType="org.apache.dolphinscheduler.dao.entity.Project">
         select code, name
         from t_ds_project
+        where 1 = 1
+        <if test="platformTenantId != null">
+            and platform_tenant_id = #{platformTenantId}
+        </if>
     </select>
 
     <select id="queryProjectByTaskInstanceId" resultType="org.apache.dolphinscheduler.dao.entity.Project">

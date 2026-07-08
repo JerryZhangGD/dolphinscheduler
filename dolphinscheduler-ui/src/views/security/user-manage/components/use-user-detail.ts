@@ -18,6 +18,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { pick } from 'lodash'
 import { queryTenantList } from '@/service/modules/tenants'
+import { queryPlatformTenantList } from '@/service/modules/platform-tenants'
 import { queryList } from '@/service/modules/queues'
 import { verifyUserName, createUser, updateUser } from '@/service/modules/users'
 import { useUserStore } from '@/store/user/user'
@@ -33,6 +34,7 @@ export function useUserDetail() {
     userName: '',
     userPassword: '',
     tenantId: null,
+    platformTenantIds: [],
     email: '',
     queue: '',
     phone: '',
@@ -47,7 +49,8 @@ export function useUserDetail() {
     saving: false,
     loading: false,
     queues: [] as { label: string; value: string }[],
-    tenants: [] as { label: string; value: number }[]
+    tenants: [] as { label: string; value: number }[],
+    platformTenants: [] as { label: string; value: number }[]
   })
 
   const formRules = {
@@ -80,6 +83,15 @@ export function useUserDetail() {
       validator(validator: any, value: string) {
         if (IS_ADMIN && !value) {
           return new Error(t('security.user.tenant_id_tips'))
+        }
+      }
+    },
+    platformTenantIds: {
+      trigger: ['input', 'blur'],
+      required: true,
+      validator(validator: any, value: number[]) {
+        if (IS_ADMIN && (!value || !value.length)) {
+          return new Error('Please select platform tenant')
         }
       }
     },
@@ -135,6 +147,19 @@ export function useUserDetail() {
       state.formData.tenantId = state.tenants[0].value
     }
   }
+  const getPlatformTenants = async () => {
+    const result = await queryPlatformTenantList()
+    state.platformTenants = result.map(
+      (tenant: { tenantName: string; tenantCode: string; id: number }) => ({
+        label: tenant.tenantName || tenant.tenantCode,
+        value: tenant.id
+      })
+    )
+    if (state.platformTenants.length) {
+      initialValues.platformTenantIds = [state.platformTenants[0].value]
+      state.formData.platformTenantIds = [state.platformTenants[0].value]
+    }
+  }
   const onReset = () => {
     state.formData = { ...initialValues }
   }
@@ -163,11 +188,15 @@ export function useUserDetail() {
       ...pick(record, [
         'userName',
         'tenantId',
+        'platformTenantIds',
         'email',
         'queue',
         'phone',
         'state'
       ]),
+      platformTenantIds:
+        record.platformTenants?.map((tenant: { id: number }) => tenant.id) ||
+        [],
       userPassword: ''
     } as UserReq
     PREV_NAME = state.formData.userName
@@ -177,6 +206,7 @@ export function useUserDetail() {
     if (IS_ADMIN) {
       getQueues()
       getTenants()
+      getPlatformTenants()
     }
   })
 

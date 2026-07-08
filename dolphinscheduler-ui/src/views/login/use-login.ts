@@ -49,10 +49,14 @@ export function useLogin(state: any) {
         const loginRes: LoginRes = await login({ ...state.loginForm })
         await userStore.setSessionId(loginRes.sessionId)
         await userStore.setSecurityConfigType(loginRes.securityConfigType)
+        await userStore.setPlatformTenantId(null)
         cookies.set('sessionId', loginRes.sessionId, { path: '/' })
 
         const userInfoRes: UserInfoRes = await getUserInfo()
         await userStore.setUserInfo(userInfoRes)
+        await userStore.setPlatformTenantId(
+          userInfoRes.currentPlatformTenantId || null
+        )
 
         const baseResDir = await queryBaseDir({
           type: 'FILE'
@@ -100,6 +104,9 @@ export function useLogin(state: any) {
           cookies.set('sessionId', String(sessionId), { path: '/' })
           const userInfoRes: UserInfoRes = await getUserInfo()
           await userStore.setUserInfo(userInfoRes)
+          await userStore.setPlatformTenantId(
+            userInfoRes.currentPlatformTenantId || null
+          )
           const timezone = userInfoRes.timeZone ? userInfoRes.timeZone : 'UTC'
           await timezoneStore.setTimezone(timezone)
           router.push('home')

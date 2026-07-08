@@ -19,7 +19,9 @@ package org.apache.dolphinscheduler.api.validator.resource;
 
 import org.apache.dolphinscheduler.api.enums.Status;
 import org.apache.dolphinscheduler.api.exceptions.ServiceException;
+import org.apache.dolphinscheduler.api.utils.PlatformTenantResourceUtils;
 import org.apache.dolphinscheduler.api.validator.ITransformer;
+import org.apache.dolphinscheduler.dao.entity.Tenant;
 import org.apache.dolphinscheduler.dao.entity.User;
 import org.apache.dolphinscheduler.dao.repository.TenantDao;
 import org.apache.dolphinscheduler.plugin.storage.api.StorageOperator;
@@ -37,9 +39,9 @@ public abstract class AbstractResourceTransformer<T, R> implements ITransformer<
     protected StorageOperator storageOperator;
 
     protected String getParentDirectoryAbsolutePath(User loginUser, String parentAbsoluteDirectory, ResourceType type) {
-        String tenantCode = tenantDao.queryOptionalById(loginUser.getTenantId())
-                .orElseThrow(() -> new ServiceException(Status.CURRENT_LOGIN_USER_TENANT_NOT_EXIST))
-                .getTenantCode();
+        Tenant tenant = tenantDao.queryOptionalById(loginUser.getTenantId())
+                .orElseThrow(() -> new ServiceException(Status.CURRENT_LOGIN_USER_TENANT_NOT_EXIST));
+        String tenantCode = PlatformTenantResourceUtils.getStorageTenantCode(loginUser, tenant);
         String userResRootPath = storageOperator.getStorageBaseDirectory(tenantCode, type);
         // If the parent directory is / then will transform to userResRootPath
         // This only happens when the front-end go into the resource page first

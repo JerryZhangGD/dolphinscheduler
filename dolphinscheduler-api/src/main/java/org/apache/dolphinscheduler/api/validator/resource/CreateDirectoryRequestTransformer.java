@@ -23,8 +23,10 @@ import org.apache.dolphinscheduler.api.dto.resources.CreateDirectoryDto;
 import org.apache.dolphinscheduler.api.dto.resources.CreateDirectoryRequest;
 import org.apache.dolphinscheduler.api.enums.Status;
 import org.apache.dolphinscheduler.api.exceptions.ServiceException;
+import org.apache.dolphinscheduler.api.utils.PlatformTenantResourceUtils;
 import org.apache.dolphinscheduler.api.validator.ITransformer;
 import org.apache.dolphinscheduler.common.utils.FileUtils;
+import org.apache.dolphinscheduler.dao.entity.Tenant;
 import org.apache.dolphinscheduler.dao.repository.TenantDao;
 import org.apache.dolphinscheduler.plugin.storage.api.StorageOperator;
 
@@ -65,9 +67,10 @@ public class CreateDirectoryRequestTransformer implements ITransformer<CreateDir
     }
 
     private String getDirectoryAbsolutePath(CreateDirectoryRequest createDirectoryRequest) {
-        String tenantCode = tenantDao.queryOptionalById(createDirectoryRequest.getLoginUser().getTenantId())
-                .orElseThrow(() -> new ServiceException(Status.CURRENT_LOGIN_USER_TENANT_NOT_EXIST))
-                .getTenantCode();
+        Tenant tenant = tenantDao.queryOptionalById(createDirectoryRequest.getLoginUser().getTenantId())
+                .orElseThrow(() -> new ServiceException(Status.CURRENT_LOGIN_USER_TENANT_NOT_EXIST));
+        String tenantCode =
+                PlatformTenantResourceUtils.getStorageTenantCode(createDirectoryRequest.getLoginUser(), tenant);
         String userResRootPath = storageOperator.getStorageBaseDirectory(tenantCode, createDirectoryRequest.getType());
         String parentDirectoryName = createDirectoryRequest.getParentAbsoluteDirectory();
         String directoryName = createDirectoryRequest.getDirectoryName();

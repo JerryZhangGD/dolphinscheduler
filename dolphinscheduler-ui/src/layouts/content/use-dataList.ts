@@ -254,6 +254,11 @@ export function useDataList() {
                   icon: renderIcon(UsergroupAddOutlined)
                 },
                 {
+                  label: t('menu.platform_tenant_manage'),
+                  key: '/security/platform-tenant-manage',
+                  icon: renderIcon(UsergroupAddOutlined)
+                },
+                {
                   label: t('menu.user_manage'),
                   key: '/security/user-manage',
                   icon: renderIcon(UserAddOutlined)

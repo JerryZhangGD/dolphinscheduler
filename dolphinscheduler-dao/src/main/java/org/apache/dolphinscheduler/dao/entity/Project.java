@@ -42,6 +42,8 @@ public class Project {
     @TableField("user_id")
     private Integer userId;
 
+    private Integer platformTenantId;
+
     @TableField(exist = false)
     private String userName;
 

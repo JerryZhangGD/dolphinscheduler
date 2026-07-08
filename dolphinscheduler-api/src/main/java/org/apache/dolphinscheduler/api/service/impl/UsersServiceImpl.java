@@ -21,6 +21,7 @@ import static org.apache.dolphinscheduler.api.constants.ApiFuncIdentificationCon
 
 import org.apache.dolphinscheduler.api.enums.Status;
 import org.apache.dolphinscheduler.api.exceptions.ServiceException;
+import org.apache.dolphinscheduler.api.service.PlatformTenantService;
 import org.apache.dolphinscheduler.api.service.SessionService;
 import org.apache.dolphinscheduler.api.service.UsersService;
 import org.apache.dolphinscheduler.api.utils.CheckUtils;
@@ -43,6 +44,7 @@ import org.apache.dolphinscheduler.dao.mapper.K8sNamespaceUserMapper;
 import org.apache.dolphinscheduler.dao.repository.AccessTokenDao;
 import org.apache.dolphinscheduler.dao.repository.AlertGroupDao;
 import org.apache.dolphinscheduler.dao.repository.DataSourceUserDao;
+import org.apache.dolphinscheduler.dao.repository.PlatformTenantUserDao;
 import org.apache.dolphinscheduler.dao.repository.ProjectDao;
 import org.apache.dolphinscheduler.dao.repository.ProjectUserDao;
 import org.apache.dolphinscheduler.dao.repository.TenantDao;
@@ -54,6 +56,8 @@ import org.apache.commons.lang3.StringUtils;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -103,6 +107,12 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
     @Autowired
     private SessionService sessionService;
 
+    @Autowired
+    private PlatformTenantService platformTenantService;
+
+    @Autowired
+    private PlatformTenantUserDao platformTenantUserDao;
+
     /**
      * create user, only system admin have permission
      *
@@ -126,6 +136,20 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
                            String phone,
                            String queue,
                            int state) throws Exception {
+        return createUser(loginUser, userName, userPassword, email, tenantId, phone, queue, state, null);
+    }
+
+    @Override
+    @Transactional
+    public User createUser(User loginUser,
+                           String userName,
+                           String userPassword,
+                           String email,
+                           int tenantId,
+                           String phone,
+                           String queue,
+                           int state,
+                           Collection<Integer> platformTenantIds) throws Exception {
         if (!isAdmin(loginUser)) {
             throw new ServiceException(Status.USER_NO_OPERATION_PERM);
         }
@@ -142,6 +166,15 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
         }
 
         User user = createUser(userName, userPassword, email, tenantId, phone, queue, state);
+        if (CollectionUtils.isNotEmpty(platformTenantIds)) {
+            platformTenantService.grantUserTenants(loginUser, user.getId(), platformTenantIds);
+        } else {
+            Integer currentPlatformTenantId = loginUser.getCurrentPlatformTenantId() == null
+                    ? Constants.DEFAULT_PLATFORM_TENANT_ID
+                    : loginUser.getCurrentPlatformTenantId();
+            platformTenantService.grantUserTenants(loginUser, user.getId(),
+                    Collections.singleton(currentPlatformTenantId));
+        }
         log.info("User is created and id is {}.", user.getId());
         return user;
     }
@@ -175,6 +208,7 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
 
         // save user
         userDao.insert(user);
+        platformTenantService.bindUserToDefaultTenant(user.getId());
         return user;
     }
 
@@ -199,6 +233,7 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
 
         // save user
         userDao.insert(user);
+        platformTenantService.bindUserToDefaultTenant(user.getId());
         return user;
     }
 
@@ -304,7 +339,9 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
 
         PageInfo<User> pageInfo = new PageInfo<>(pageNo, pageSize);
         pageInfo.setTotal((int) scheduleList.getTotal());
-        pageInfo.setTotalList(scheduleList.getRecords());
+        List<User> users = scheduleList.getRecords();
+        fillPlatformTenants(users);
+        pageInfo.setTotalList(users);
         result.setData(pageInfo);
         putMsg(result, Status.SUCCESS);
 
@@ -339,6 +376,23 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
                            String queue,
                            int state,
                            String timeZone) {
+        return updateUser(loginUser, userId, userName, userPassword, email, tenantId, phone, queue, state, timeZone,
+                null);
+    }
+
+    @Override
+    @Transactional
+    public User updateUser(User loginUser,
+                           Integer userId,
+                           String userName,
+                           String userPassword,
+                           String email,
+                           Integer tenantId,
+                           String phone,
+                           String queue,
+                           int state,
+                           String timeZone,
+                           Collection<Integer> platformTenantIds) {
 
         if (!canOperator(loginUser, userId)) {
             throw new ServiceException(Status.USER_NO_OPERATION_PERM);
@@ -411,6 +465,12 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
         if (!userDao.updateById(user)) {
             throw new ServiceException(Status.UPDATE_USER_ERROR);
         }
+        if (platformTenantIds != null) {
+            if (!isAdmin(loginUser)) {
+                throw new ServiceException(Status.USER_NO_OPERATION_PERM);
+            }
+            platformTenantService.grantUserTenants(loginUser, userId, platformTenantIds);
+        }
         return user;
     }
 
@@ -450,6 +510,7 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
 
         accessTokenDao.deleteByUserId(id);
         sessionService.expireSession(id);
+        platformTenantUserDao.deleteByUserId(id);
 
         if (!userDao.deleteById(id)) {
             log.error("User delete error, userId:{}.", id);
@@ -768,6 +829,7 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
         if (tenant != null) {
             user.setTenantCode(tenant.getTenantCode());
         }
+        fillPlatformTenants(user, loginUser);
 
         // add system default timezone if not user timezone
         if (StringUtils.isEmpty(user.getTimeZone())) {
@@ -792,7 +854,9 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
             log.warn("Only admin can query all general users.");
             throw new ServiceException(Status.USER_NO_OPERATION_PERM);
         }
-        return userDao.queryAllGeneralUser();
+        List<User> users = userDao.queryAllGeneralUser();
+        fillPlatformTenants(users);
+        return users;
     }
 
     /**
@@ -807,7 +871,28 @@ public class UsersServiceImpl extends BaseServiceImpl implements UsersService {
         if (!canOperatorPermissions(loginUser, null, AuthorizationType.ACCESS_TOKEN, USER_MANAGER)) {
             throw new ServiceException(Status.USER_NO_OPERATION_PERM);
         }
-        return userDao.queryEnabledUsers();
+        List<User> users = userDao.queryEnabledUsers();
+        fillPlatformTenants(users);
+        return users;
+    }
+
+    private void fillPlatformTenants(List<User> users) {
+        if (CollectionUtils.isEmpty(users)) {
+            return;
+        }
+        for (User user : users) {
+            fillPlatformTenants(user, user);
+        }
+    }
+
+    private void fillPlatformTenants(User user, User currentUser) {
+        if (user == null || user.getId() == null) {
+            return;
+        }
+        user.setPlatformTenants(platformTenantService.queryTenantListByUserId(user.getId()));
+        user.setCurrentPlatformTenantId(currentUser.getCurrentPlatformTenantId());
+        user.setCurrentPlatformTenantCode(currentUser.getCurrentPlatformTenantCode());
+        user.setCurrentPlatformTenantName(currentUser.getCurrentPlatformTenantName());
     }
 
     /**

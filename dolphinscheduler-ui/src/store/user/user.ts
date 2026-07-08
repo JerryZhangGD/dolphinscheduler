@@ -25,6 +25,7 @@ export const useUserStore = defineStore({
     sessionId: '',
     securityConfigType: '',
     baseResDir: '',
+    platformTenantId: null,
     userInfo: {}
   }),
   persist: true,
@@ -40,6 +41,9 @@ export const useUserStore = defineStore({
     },
     getBaseResDir(): string {
       return this.baseResDir
+    },
+    getPlatformTenantId(): number | null {
+      return this.platformTenantId
     }
   },
   actions: {
@@ -54,6 +58,9 @@ export const useUserStore = defineStore({
     },
     setBaseResDir(baseResDir: string): void {
       this.baseResDir = baseResDir
+    },
+    setPlatformTenantId(platformTenantId: number | null): void {
+      this.platformTenantId = platformTenantId
     }
   }
 })

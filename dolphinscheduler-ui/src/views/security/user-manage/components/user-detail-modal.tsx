@@ -137,6 +137,17 @@ export const UserModal = defineComponent({
             </NFormItem>
           )}
           {this.IS_ADMIN && (
+            <NFormItem label='Platform Tenant' path='platformTenantIds'>
+              <NSelect
+                class='select-platform-tenant'
+                options={this.platformTenants}
+                multiple
+                filterable
+                v-model:value={this.formData.platformTenantIds}
+              />
+            </NFormItem>
+          )}
+          {this.IS_ADMIN && (
             <NFormItem label={t('security.user.tenant_code')} path='tenantId'>
               <NSelect
                 class='select-tenant'
