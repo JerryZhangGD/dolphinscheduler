@@ -16,7 +16,7 @@
  */
 
 import { defineStore } from 'pinia'
-import type { UserState } from '@/store/user/types'
+import type { DomainMode, UserState } from '@/store/user/types'
 import type { UserInfoRes } from '@/service/modules/users/types'
 
 export const useUserStore = defineStore({
@@ -26,6 +26,7 @@ export const useUserStore = defineStore({
     securityConfigType: '',
     baseResDir: '',
     platformTenantId: null,
+    domainMode: 'public',
     userInfo: {}
   }),
   persist: true,
@@ -44,6 +45,9 @@ export const useUserStore = defineStore({
     },
     getPlatformTenantId(): number | null {
       return this.platformTenantId
+    },
+    getDomainMode(): DomainMode {
+      return this.domainMode
     }
   },
   actions: {
@@ -61,6 +65,9 @@ export const useUserStore = defineStore({
     },
     setPlatformTenantId(platformTenantId: number | null): void {
       this.platformTenantId = platformTenantId
+    },
+    setDomainMode(domainMode: DomainMode): void {
+      this.domainMode = domainMode
     }
   }
 })

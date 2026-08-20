@@ -58,10 +58,22 @@ router.beforeEach(
     const userInfo = userStore.getUserInfo as UserInfoRes
     const isSystemAdmin = userInfo.userType === 'ADMIN_USER'
     const isPlatformTenantAdmin = Boolean(userInfo.currentPlatformTenantAdmin)
+    const isPrivateDomain = userStore.getDomainMode === 'private'
     const isPlatformTenantManage = to.name === 'platform-tenant-manage'
+    const privateDomainBlockedSecurityRoutes = [
+      'platform-tenant-manage',
+      'user-manage',
+      'token-manage'
+    ]
     if (
+      isPrivateDomain &&
+      privateDomainBlockedSecurityRoutes.includes(String(to.name))
+    ) {
+      next({ name: 'tenant-manage' })
+    } else if (
       metaData.auth?.includes('ADMIN_USER') &&
       metaData.activeMenu === 'security' &&
+      !isPrivateDomain &&
       !isSystemAdmin &&
       (!isPlatformTenantAdmin || isPlatformTenantManage)
     ) {

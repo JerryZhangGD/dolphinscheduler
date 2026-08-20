@@ -40,6 +40,28 @@ public class PlatformTenant {
 
     private String description;
 
+    private String privateAdminToken;
+
+    private String privateDeployIp;
+
+    private String privateDbType;
+
+    private String privateDbHost;
+
+    private String privateDbPort;
+
+    private String privateDbName;
+
+    private String privateDbUser;
+
+    private String privateDbUrl;
+
+    private String privateDeployPath;
+
+    private String privateProcessCheckCommand;
+
+    private String privateNginxProxyPath;
+
     @TableField(exist = false)
     private List<Integer> adminUserIds;
 

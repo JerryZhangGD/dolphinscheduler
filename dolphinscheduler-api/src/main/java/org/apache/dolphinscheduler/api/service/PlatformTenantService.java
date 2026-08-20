@@ -17,12 +17,17 @@
 
 package org.apache.dolphinscheduler.api.service;
 
+import org.apache.dolphinscheduler.api.dto.PrivateDomainDeployRequest;
+import org.apache.dolphinscheduler.api.dto.PrivateDomainDeployResult;
+import org.apache.dolphinscheduler.api.dto.PrivateDomainStatus;
 import org.apache.dolphinscheduler.api.utils.PageInfo;
 import org.apache.dolphinscheduler.dao.entity.PlatformTenant;
 import org.apache.dolphinscheduler.dao.entity.User;
 
 import java.util.Collection;
 import java.util.List;
+
+import javax.servlet.http.HttpServletRequest;
 
 public interface PlatformTenantService {
 
@@ -50,6 +55,13 @@ public interface PlatformTenantService {
     void verifyTenantCode(String tenantCode);
 
     PlatformTenant switchTenant(User loginUser, String sessionId, int platformTenantId);
+
+    PrivateDomainStatus queryPrivateDomainStatus(User loginUser, int platformTenantId, HttpServletRequest request);
+
+    PrivateDomainDeployResult deployPrivateDomain(User loginUser,
+                                                  int platformTenantId,
+                                                  PrivateDomainDeployRequest deployRequest,
+                                                  HttpServletRequest request);
 
     PlatformTenant resolveCurrentTenant(User loginUser, String sessionId, Integer requestedPlatformTenantId);
 

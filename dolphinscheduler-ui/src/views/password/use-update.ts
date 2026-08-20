@@ -44,6 +44,7 @@ export function useUpdate(state: any) {
         await userStore.setUserInfo({})
         await userStore.setBaseResDir('')
         await userStore.setPlatformTenantId(null)
+        await userStore.setDomainMode('public')
         await router.push({ path: 'login' })
       }
     })

@@ -90,7 +90,9 @@ export function useDataList() {
     const userInfo = userStore.getUserInfo as UserInfoRes
     const isSystemAdmin = userInfo.userType === 'ADMIN_USER'
     const isPlatformTenantAdmin = Boolean(userInfo.currentPlatformTenantAdmin)
-    const isGeneralUser = !isSystemAdmin && !isPlatformTenantAdmin
+    const isPrivateDomain = userStore.getDomainMode === 'private'
+    const isGeneralUser =
+      !isPrivateDomain && !isSystemAdmin && !isPlatformTenantAdmin
     const adminSecurityOptions = [
       {
         label: t('menu.tenant_manage'),
@@ -157,6 +159,14 @@ export function useDataList() {
     ]
     const platformTenantAdminSecurityOptions = adminSecurityOptions.filter(
       (option) => option.key !== '/security/platform-tenant-manage'
+    )
+    const privateSecurityOptions = adminSecurityOptions.filter(
+      (option) =>
+        ![
+          '/security/platform-tenant-manage',
+          '/security/user-manage',
+          '/security/token-manage'
+        ].includes(option.key)
     )
     state.menuOptions = [
       {
@@ -316,7 +326,9 @@ export function useDataList() {
         label: () => h(NEllipsis, null, { default: () => t('menu.security') }),
         key: 'security',
         icon: renderIcon(SafetyCertificateOutlined),
-        children: isSystemAdmin
+        children: isPrivateDomain
+          ? privateSecurityOptions
+          : isSystemAdmin
           ? adminSecurityOptions
           : isPlatformTenantAdmin
           ? platformTenantAdminSecurityOptions

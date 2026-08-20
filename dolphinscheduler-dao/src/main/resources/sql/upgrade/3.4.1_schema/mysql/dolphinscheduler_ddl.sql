@@ -44,6 +44,21 @@ CREATE TABLE IF NOT EXISTS `t_ds_platform_tenant_user` (
 INSERT IGNORE INTO `t_ds_platform_tenant`(id, tenant_code, tenant_name, description, create_time, update_time)
 VALUES (1, 'default', 'default', 'default platform tenant', current_timestamp, current_timestamp);
 
+ALTER TABLE `t_ds_platform_tenant`
+ADD COLUMN `private_admin_token` varchar(255) DEFAULT NULL COMMENT 'private domain admin token' AFTER `description`;
+
+ALTER TABLE `t_ds_platform_tenant`
+ADD COLUMN `private_deploy_ip` varchar(255) DEFAULT NULL COMMENT 'private domain deploy ip' AFTER `private_admin_token`,
+ADD COLUMN `private_db_type` varchar(64) DEFAULT NULL COMMENT 'private domain database type' AFTER `private_deploy_ip`,
+ADD COLUMN `private_db_host` varchar(255) DEFAULT NULL COMMENT 'private domain database host' AFTER `private_db_type`,
+ADD COLUMN `private_db_port` varchar(32) DEFAULT NULL COMMENT 'private domain database port' AFTER `private_db_host`,
+ADD COLUMN `private_db_name` varchar(255) DEFAULT NULL COMMENT 'private domain database name' AFTER `private_db_port`,
+ADD COLUMN `private_db_user` varchar(255) DEFAULT NULL COMMENT 'private domain database user' AFTER `private_db_name`,
+ADD COLUMN `private_db_url` varchar(1024) DEFAULT NULL COMMENT 'private domain database url' AFTER `private_db_user`,
+ADD COLUMN `private_deploy_path` varchar(512) DEFAULT NULL COMMENT 'private domain deploy path' AFTER `private_db_url`,
+ADD COLUMN `private_process_check_command` text DEFAULT NULL COMMENT 'private domain process check command' AFTER `private_deploy_path`,
+ADD COLUMN `private_nginx_proxy_path` varchar(128) DEFAULT NULL COMMENT 'private domain nginx proxy path' AFTER `private_process_check_command`;
+
 INSERT IGNORE INTO `t_ds_platform_tenant_user`(platform_tenant_id, user_id, admin_flag, create_time, update_time)
 SELECT 1, id, CASE WHEN user_type = 0 THEN 1 ELSE 0 END, current_timestamp, current_timestamp FROM `t_ds_user`;
 

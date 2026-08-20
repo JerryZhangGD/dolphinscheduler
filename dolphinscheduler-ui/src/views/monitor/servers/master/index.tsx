@@ -44,6 +44,7 @@ const master = defineComponent({
     const userStore = useUserStore()
     const userInfo = userStore.getUserInfo as UserInfoRes
     const IS_ADMIN =
+      userStore.getDomainMode === 'private' ||
       userInfo.userType === 'ADMIN_USER' ||
       Boolean(userInfo.currentPlatformTenantAdmin)
     const { variables, getTableMaster } = useMaster()

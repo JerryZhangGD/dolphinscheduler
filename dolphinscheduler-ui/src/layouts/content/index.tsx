@@ -77,6 +77,7 @@ const Content = defineComponent({
         const userInfo = userStore.getUserInfo as UserInfoRes
         return [
           userStore.getPlatformTenantId,
+          userStore.getDomainMode,
           userInfo.userType,
           userInfo.currentPlatformTenantAdmin
         ]

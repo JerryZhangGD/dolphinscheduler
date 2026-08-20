@@ -127,6 +127,17 @@ interface PlatformTenant {
   tenantCode: string
   tenantName: string
   description?: string
+  privateAdminToken?: string
+  privateDeployIp?: string
+  privateDbType?: string
+  privateDbHost?: string
+  privateDbPort?: string
+  privateDbName?: string
+  privateDbUser?: string
+  privateDbUrl?: string
+  privateDeployPath?: string
+  privateProcessCheckCommand?: string
+  privateNginxProxyPath?: string
   adminUserIds?: number[]
   createTime?: string
   updateTime?: string

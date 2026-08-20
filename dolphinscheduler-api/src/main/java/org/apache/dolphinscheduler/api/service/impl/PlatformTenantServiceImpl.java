@@ -17,6 +17,9 @@
 
 package org.apache.dolphinscheduler.api.service.impl;
 
+import org.apache.dolphinscheduler.api.dto.PrivateDomainDeployRequest;
+import org.apache.dolphinscheduler.api.dto.PrivateDomainDeployResult;
+import org.apache.dolphinscheduler.api.dto.PrivateDomainStatus;
 import org.apache.dolphinscheduler.api.enums.Status;
 import org.apache.dolphinscheduler.api.exceptions.ServiceException;
 import org.apache.dolphinscheduler.api.service.PlatformTenantService;
@@ -26,6 +29,7 @@ import org.apache.dolphinscheduler.api.utils.RegexUtils;
 import org.apache.dolphinscheduler.common.constants.Constants;
 import org.apache.dolphinscheduler.common.enums.UserType;
 import org.apache.dolphinscheduler.common.utils.CodeGenerateUtils;
+import org.apache.dolphinscheduler.common.utils.EncryptionUtils;
 import org.apache.dolphinscheduler.dao.entity.PlatformTenant;
 import org.apache.dolphinscheduler.dao.entity.PlatformTenantUser;
 import org.apache.dolphinscheduler.dao.entity.Project;
@@ -40,14 +44,31 @@ import org.apache.dolphinscheduler.dao.repository.UserDao;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.sshd.client.SshClient;
+import org.apache.sshd.client.channel.ChannelExec;
+import org.apache.sshd.client.channel.ClientChannelEvent;
+import org.apache.sshd.client.session.ClientSession;
+import org.apache.sshd.common.config.keys.loader.KeyPairResourceLoader;
+import org.apache.sshd.common.util.security.SecurityUtils;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.KeyPair;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+
+import javax.servlet.http.HttpServletRequest;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -59,11 +80,26 @@ import org.springframework.transaction.annotation.Transactional;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+
 @Service
 @Slf4j
 public class PlatformTenantServiceImpl extends BaseServiceImpl implements PlatformTenantService {
 
     private static final int PLATFORM_TENANT_CODE_MAX_LENGTH = 64;
+
+    private static final int PRIVATE_DOMAIN_HTTP_TIMEOUT_MS = 5000;
+
+    private static final int PRIVATE_DOMAIN_SSH_CONNECT_TIMEOUT_MS = 10000;
+
+    private static final int PRIVATE_DOMAIN_SSH_COMMAND_TIMEOUT_MS = 600000;
+
+    private static final int PRIVATE_DOMAIN_COMMAND_OUTPUT_MAX_LENGTH = 4000;
+
+    private static final String DEFAULT_PRIVATE_DOMAIN_PROCESS_CHECK_COMMAND =
+            "ps -ef | grep -E \"ApiApplicationServer|MasterServer|WorkerServer|AlertServer|StandaloneServer\" | grep -v grep";
 
     @Autowired
     private PlatformTenantDao platformTenantDao;
@@ -207,6 +243,42 @@ public class PlatformTenantServiceImpl extends BaseServiceImpl implements Platfo
     @Override
     public PlatformTenant switchTenant(User loginUser, String sessionId, int platformTenantId) {
         return resolveAndFillCurrentTenant(loginUser, sessionId, platformTenantId);
+    }
+
+    @Override
+    public PrivateDomainStatus queryPrivateDomainStatus(User loginUser,
+                                                        int platformTenantId,
+                                                        HttpServletRequest request) {
+        PlatformTenant tenant = queryAccessibleTenant(loginUser, platformTenantId);
+        return probePrivateDomain(tenant, request);
+    }
+
+    @Override
+    @Transactional(rollbackFor = RuntimeException.class)
+    public PrivateDomainDeployResult deployPrivateDomain(User loginUser,
+                                                         int platformTenantId,
+                                                         PrivateDomainDeployRequest deployRequest,
+                                                         HttpServletRequest request) {
+        PlatformTenant tenant = queryAccessibleTenant(loginUser, platformTenantId);
+        checkPrivateDomainManagePermission(loginUser, tenant.getId());
+        checkPrivateDomainDeployRequest(deployRequest);
+
+        String privateAdminToken = generatePrivateAdminToken(tenant.getTenantCode());
+        fillPrivateDomainDeployment(tenant, deployRequest, privateAdminToken);
+
+        String commandOutput = executePrivateDomainDeployCommands(tenant, deployRequest);
+        tenant.setUpdateTime(new Date());
+        platformTenantDao.updateById(tenant);
+
+        PrivateDomainStatus status = probePrivateDomain(tenant, request);
+        return PrivateDomainDeployResult.builder()
+                .available(status.isAvailable())
+                .message(status.getMessage())
+                .commandOutput(commandOutput)
+                .privateAdminToken(privateAdminToken)
+                .status(status)
+                .platformTenant(tenant)
+                .build();
     }
 
     @Override
@@ -422,6 +494,287 @@ public class PlatformTenantServiceImpl extends BaseServiceImpl implements Platfo
                 .stream()
                 .map(PlatformTenantUser::getUserId)
                 .collect(Collectors.toList()));
+    }
+
+    private PlatformTenant queryAccessibleTenant(User loginUser, int platformTenantId) {
+        PlatformTenant tenant = platformTenantDao.queryById(platformTenantId);
+        if (tenant == null) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, platformTenantId);
+        }
+        if (loginUser.getUserType() != UserType.ADMIN_USER
+                && platformTenantUserDao.queryByUserIdAndPlatformTenantId(loginUser.getId(), platformTenantId) == null) {
+            throw new ServiceException(Status.USER_NO_OPERATION_PERM);
+        }
+        ensurePrivateDomainDefaults(tenant);
+        return tenant;
+    }
+
+    private void checkPrivateDomainManagePermission(User loginUser, int platformTenantId) {
+        if (loginUser.getUserType() == UserType.ADMIN_USER || isPlatformTenantAdmin(loginUser.getId(), platformTenantId)) {
+            return;
+        }
+        throw new ServiceException(Status.USER_NO_OPERATION_PERM);
+    }
+
+    private void ensurePrivateDomainDefaults(PlatformTenant tenant) {
+        boolean changed = false;
+        if (StringUtils.isBlank(tenant.getPrivateNginxProxyPath())) {
+            tenant.setPrivateNginxProxyPath(defaultPrivateNginxProxyPath(tenant.getTenantCode()));
+            changed = true;
+        }
+        if (StringUtils.isBlank(tenant.getPrivateProcessCheckCommand())) {
+            tenant.setPrivateProcessCheckCommand(DEFAULT_PRIVATE_DOMAIN_PROCESS_CHECK_COMMAND);
+            changed = true;
+        }
+        if (!changed) {
+            return;
+        }
+        tenant.setUpdateTime(new Date());
+        platformTenantDao.updateById(tenant);
+    }
+
+    private PrivateDomainStatus probePrivateDomain(PlatformTenant tenant, HttpServletRequest request) {
+        String proxyPath = normalizeProxyPath(StringUtils.defaultIfBlank(
+                tenant.getPrivateNginxProxyPath(),
+                defaultPrivateNginxProxyPath(tenant.getTenantCode())));
+        String probeUrl = buildPrivateDomainProbeUrl(proxyPath, request);
+        if (StringUtils.isBlank(tenant.getPrivateAdminToken())) {
+            return PrivateDomainStatus.builder()
+                    .available(false)
+                    .tenantCode(tenant.getTenantCode())
+                    .proxyPath(proxyPath)
+                    .probeUrl(probeUrl)
+                    .message("PRIVATE_DOMAIN_TOKEN_NOT_CREATED")
+                    .platformTenant(tenant)
+                    .build();
+        }
+        try {
+            OkHttpClient client = new OkHttpClient.Builder()
+                    .connectTimeout(PRIVATE_DOMAIN_HTTP_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                    .writeTimeout(PRIVATE_DOMAIN_HTTP_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                    .readTimeout(PRIVATE_DOMAIN_HTTP_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                    .build();
+            Request probeRequest = new Request.Builder()
+                    .url(probeUrl)
+                    .addHeader("token", tenant.getPrivateAdminToken())
+                    .build();
+            try (Response response = client.newCall(probeRequest).execute()) {
+                boolean available = response.isSuccessful();
+                return PrivateDomainStatus.builder()
+                        .available(available)
+                        .tenantCode(tenant.getTenantCode())
+                        .proxyPath(proxyPath)
+                        .probeUrl(probeUrl)
+                        .message(available ? "PRIVATE_DOMAIN_AVAILABLE" : "PRIVATE_DOMAIN_UNAVAILABLE")
+                        .platformTenant(tenant)
+                        .build();
+            }
+        } catch (Exception ex) {
+            log.info("Probe private domain failed, tenantCode:{}, probeUrl:{}", tenant.getTenantCode(), probeUrl, ex);
+            return PrivateDomainStatus.builder()
+                    .available(false)
+                    .tenantCode(tenant.getTenantCode())
+                    .proxyPath(proxyPath)
+                    .probeUrl(probeUrl)
+                    .message("PRIVATE_DOMAIN_UNAVAILABLE")
+                    .platformTenant(tenant)
+                    .build();
+        }
+    }
+
+    private String buildPrivateDomainProbeUrl(String proxyPath, HttpServletRequest request) {
+        String scheme = firstHeaderValue(request.getHeader("X-Forwarded-Proto"));
+        if (StringUtils.isBlank(scheme)) {
+            scheme = request.getScheme();
+        }
+
+        String host = firstHeaderValue(request.getHeader("X-Forwarded-Host"));
+        if (StringUtils.isBlank(host)) {
+            host = request.getHeader("Host");
+        }
+        if (StringUtils.isBlank(host)) {
+            host = request.getServerName();
+            int port = request.getServerPort();
+            if (port > 0 && port != 80 && port != 443) {
+                host = host + ":" + port;
+            }
+        }
+        return scheme + "://" + host + proxyPath + "/monitor/MASTER";
+    }
+
+    private String firstHeaderValue(String headerValue) {
+        if (StringUtils.isBlank(headerValue)) {
+            return null;
+        }
+        return StringUtils.substringBefore(headerValue, ",").trim();
+    }
+
+    private void checkPrivateDomainDeployRequest(PrivateDomainDeployRequest deployRequest) {
+        if (deployRequest == null
+                || StringUtils.isBlank(deployRequest.getSshHost())
+                || StringUtils.isBlank(deployRequest.getSshUser())
+                || StringUtils.isBlank(deployRequest.getDeployIp())
+                || StringUtils.isBlank(deployRequest.getDbType())
+                || StringUtils.isBlank(deployRequest.getDeployCommand())
+                || StringUtils.isAllBlank(deployRequest.getSshPassword(), deployRequest.getSshPrivateKey())) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "private domain deploy params");
+        }
+        if (StringUtils.isAllBlank(deployRequest.getDbHost(), deployRequest.getDbUrl())) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "dbHost or dbUrl");
+        }
+    }
+
+    private void fillPrivateDomainDeployment(PlatformTenant tenant,
+                                             PrivateDomainDeployRequest deployRequest,
+                                             String privateAdminToken) {
+        tenant.setPrivateAdminToken(privateAdminToken);
+        tenant.setPrivateDeployIp(deployRequest.getDeployIp());
+        tenant.setPrivateDbType(deployRequest.getDbType());
+        tenant.setPrivateDbHost(deployRequest.getDbHost());
+        tenant.setPrivateDbPort(deployRequest.getDbPort());
+        tenant.setPrivateDbName(deployRequest.getDbName());
+        tenant.setPrivateDbUser(deployRequest.getDbUser());
+        tenant.setPrivateDbUrl(deployRequest.getDbUrl());
+        tenant.setPrivateDeployPath(deployRequest.getDeployPath());
+        tenant.setPrivateProcessCheckCommand(StringUtils.defaultIfBlank(
+                deployRequest.getProcessCheckCommand(),
+                DEFAULT_PRIVATE_DOMAIN_PROCESS_CHECK_COMMAND));
+        tenant.setPrivateNginxProxyPath(defaultPrivateNginxProxyPath(tenant.getTenantCode()));
+    }
+
+    private String executePrivateDomainDeployCommands(PlatformTenant tenant, PrivateDomainDeployRequest deployRequest) {
+        StringBuilder output = new StringBuilder();
+        try (SshClient sshClient = SshClient.setUpDefaultClient()) {
+            sshClient.start();
+            try (ClientSession session = createSshSession(sshClient, deployRequest)) {
+                appendCommandOutput(output, "deploy",
+                        runRemoteCommand(session, resolveDeployCommand(deployRequest.getDeployCommand(), tenant,
+                                deployRequest)));
+                if (StringUtils.isNotBlank(deployRequest.getNginxConfigCommand())) {
+                    appendCommandOutput(output, "nginx-config",
+                            runRemoteCommand(session,
+                                    resolveDeployCommand(deployRequest.getNginxConfigCommand(), tenant, deployRequest)));
+                }
+                if (StringUtils.isNotBlank(deployRequest.getNginxReloadCommand())) {
+                    appendCommandOutput(output, "nginx-reload",
+                            runRemoteCommand(session,
+                                    resolveDeployCommand(deployRequest.getNginxReloadCommand(), tenant,
+                                            deployRequest)));
+                }
+                if (StringUtils.isNotBlank(tenant.getPrivateProcessCheckCommand())) {
+                    appendCommandOutput(output, "process-check",
+                            runRemoteCommand(session,
+                                    resolveDeployCommand(tenant.getPrivateProcessCheckCommand(), tenant,
+                                            deployRequest)));
+                }
+            }
+        } catch (Exception ex) {
+            throw new ServiceException("deploy private domain failed: " + ex.getMessage(), ex);
+        }
+        return truncateCommandOutput(output.toString());
+    }
+
+    private ClientSession createSshSession(SshClient sshClient, PrivateDomainDeployRequest deployRequest)
+            throws Exception {
+        int sshPort = deployRequest.getSshPort() == null ? 22 : deployRequest.getSshPort();
+        ClientSession session = sshClient.connect(deployRequest.getSshUser(), deployRequest.getSshHost(), sshPort)
+                .verify(PRIVATE_DOMAIN_SSH_CONNECT_TIMEOUT_MS)
+                .getSession();
+        if (StringUtils.isNotBlank(deployRequest.getSshPassword())) {
+            session.addPasswordIdentity(deployRequest.getSshPassword());
+        }
+        if (StringUtils.isNotBlank(deployRequest.getSshPrivateKey())) {
+            KeyPairResourceLoader loader = SecurityUtils.getKeyPairResourceParser();
+            Collection<KeyPair> keyPairs = loader.loadKeyPairs(null, null, null, deployRequest.getSshPrivateKey());
+            for (KeyPair keyPair : keyPairs) {
+                session.addPublicKeyIdentity(keyPair);
+            }
+        }
+        if (!session.auth().verify(PRIVATE_DOMAIN_SSH_CONNECT_TIMEOUT_MS).isSuccess()) {
+            throw new ServiceException("SSH auth failed");
+        }
+        return session;
+    }
+
+    private String runRemoteCommand(ClientSession session, String command) throws IOException {
+        try (
+                ChannelExec channel = session.createExecChannel(command);
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                ByteArrayOutputStream err = new ByteArrayOutputStream()) {
+            channel.setOut(out);
+            channel.setErr(err);
+            channel.open().verify(PRIVATE_DOMAIN_SSH_CONNECT_TIMEOUT_MS);
+            Set<ClientChannelEvent> events = channel.waitFor(
+                    EnumSet.of(ClientChannelEvent.CLOSED, ClientChannelEvent.TIMEOUT),
+                    PRIVATE_DOMAIN_SSH_COMMAND_TIMEOUT_MS);
+            if (events.contains(ClientChannelEvent.TIMEOUT)) {
+                throw new ServiceException("remote command timeout");
+            }
+            Integer exitStatus = channel.getExitStatus();
+            String stdout = new String(out.toByteArray(), StandardCharsets.UTF_8);
+            String stderr = new String(err.toByteArray(), StandardCharsets.UTF_8);
+            if (exitStatus == null || exitStatus != 0) {
+                throw new ServiceException("remote command failed, exitStatus: " + exitStatus + ", error: "
+                        + truncateCommandOutput(stderr));
+            }
+            return stdout + (StringUtils.isBlank(stderr) ? "" : System.lineSeparator() + stderr);
+        }
+    }
+
+    private String resolveDeployCommand(String command,
+                                        PlatformTenant tenant,
+                                        PrivateDomainDeployRequest deployRequest) {
+        Map<String, String> variables = new HashMap<>();
+        variables.put("tenantCode", tenant.getTenantCode());
+        variables.put("privateAdminToken", tenant.getPrivateAdminToken());
+        variables.put("deployIp", deployRequest.getDeployIp());
+        variables.put("dbType", deployRequest.getDbType());
+        variables.put("dbHost", deployRequest.getDbHost());
+        variables.put("dbPort", deployRequest.getDbPort());
+        variables.put("dbName", deployRequest.getDbName());
+        variables.put("dbUser", deployRequest.getDbUser());
+        variables.put("dbPassword", deployRequest.getDbPassword());
+        variables.put("dbUrl", deployRequest.getDbUrl());
+        variables.put("deployPath", deployRequest.getDeployPath());
+        variables.put("nginxProxyPath", tenant.getPrivateNginxProxyPath());
+
+        String resolvedCommand = command;
+        for (Map.Entry<String, String> entry : variables.entrySet()) {
+            resolvedCommand = StringUtils.replace(resolvedCommand, "${" + entry.getKey() + "}",
+                    StringUtils.defaultString(entry.getValue()));
+        }
+        return resolvedCommand;
+    }
+
+    private void appendCommandOutput(StringBuilder output, String step, String stepOutput) {
+        if (output.length() > 0) {
+            output.append(System.lineSeparator());
+        }
+        output.append("[").append(step).append("]").append(System.lineSeparator())
+                .append(StringUtils.defaultString(stepOutput));
+    }
+
+    private String truncateCommandOutput(String output) {
+        if (StringUtils.length(output) <= PRIVATE_DOMAIN_COMMAND_OUTPUT_MAX_LENGTH) {
+            return output;
+        }
+        return StringUtils.substring(output, 0, PRIVATE_DOMAIN_COMMAND_OUTPUT_MAX_LENGTH);
+    }
+
+    private String defaultPrivateNginxProxyPath(String tenantCode) {
+        return normalizeProxyPath(tenantCode);
+    }
+
+    private String normalizeProxyPath(String proxyPath) {
+        if (StringUtils.isBlank(proxyPath)) {
+            return "";
+        }
+        String normalizedProxyPath = proxyPath.startsWith("/") ? proxyPath : "/" + proxyPath;
+        return StringUtils.removeEnd(normalizedProxyPath, "/");
+    }
+
+    private String generatePrivateAdminToken(String tenantCode) {
+        return EncryptionUtils.getMd5(tenantCode + UUID.randomUUID().toString() + System.currentTimeMillis());
     }
 
     private void checkTenantParams(String tenantCode, String tenantName, String description) {

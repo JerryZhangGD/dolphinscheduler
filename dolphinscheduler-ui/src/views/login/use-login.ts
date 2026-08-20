@@ -50,6 +50,7 @@ export function useLogin(state: any) {
         await userStore.setSessionId(loginRes.sessionId)
         await userStore.setSecurityConfigType(loginRes.securityConfigType)
         await userStore.setPlatformTenantId(null)
+        await userStore.setDomainMode('public')
         cookies.set('sessionId', loginRes.sessionId, { path: '/' })
 
         const userInfoRes: UserInfoRes = await getUserInfo()
@@ -103,6 +104,7 @@ export function useLogin(state: any) {
         if (sessionId) {
           cookies.set('sessionId', String(sessionId), { path: '/' })
           const userInfoRes: UserInfoRes = await getUserInfo()
+          await userStore.setDomainMode('public')
           await userStore.setUserInfo(userInfoRes)
           await userStore.setPlatformTenantId(
             userInfoRes.currentPlatformTenantId || null

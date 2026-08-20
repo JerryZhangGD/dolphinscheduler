@@ -84,6 +84,14 @@ const ProjectSwitcher = defineComponent({
     )
 
     watch(
+      () => userStore.getDomainMode,
+      async () => {
+        projects.value = []
+        await refreshProjects()
+      }
+    )
+
+    watch(
       () => routeProjectCode.value,
       async (projectCode) => {
         if (projectCode && !findProject(projectCode)) {

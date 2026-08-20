@@ -15,17 +15,46 @@
  * limitations under the License.
  */
 
-import type { UserInfoRes } from '@/service/modules/users/types'
+package org.apache.dolphinscheduler.api.dto;
 
-type DomainMode = 'public' | 'private'
+import lombok.Data;
 
-interface UserState {
-  sessionId: string
-  securityConfigType: string
-  baseResDir: string
-  platformTenantId: number | null
-  domainMode: DomainMode
-  userInfo: UserInfoRes | {}
+@Data
+public class PrivateDomainDeployRequest {
+
+    private String sshHost;
+
+    private Integer sshPort;
+
+    private String sshUser;
+
+    private String sshPassword;
+
+    private String sshPrivateKey;
+
+    private String deployIp;
+
+    private String dbType;
+
+    private String dbHost;
+
+    private String dbPort;
+
+    private String dbName;
+
+    private String dbUser;
+
+    private String dbPassword;
+
+    private String dbUrl;
+
+    private String deployPath;
+
+    private String processCheckCommand;
+
+    private String deployCommand;
+
+    private String nginxConfigCommand;
+
+    private String nginxReloadCommand;
 }
-
-export { UserState, DomainMode }

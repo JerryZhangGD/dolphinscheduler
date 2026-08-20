@@ -21,7 +21,8 @@ import {
   PlatformTenantCodeReq,
   PlatformTenantReq,
   IdReq,
-  SwitchPlatformTenantReq
+  SwitchPlatformTenantReq,
+  PrivateDomainDeployReq
 } from './types'
 
 export function queryPlatformTenantListPaging(params: ListReq): any {
@@ -76,6 +77,24 @@ export function deletePlatformTenantById(id: number): any {
 export function switchPlatformTenant(data: SwitchPlatformTenantReq): any {
   return axios({
     url: '/platform-tenants/switch',
+    method: 'post',
+    data
+  })
+}
+
+export function queryPrivateDomainStatus(id: number): any {
+  return axios({
+    url: `/platform-tenants/${id}/private-domain/status`,
+    method: 'get'
+  })
+}
+
+export function deployPrivateDomain(
+  id: number,
+  data: PrivateDomainDeployReq
+): any {
+  return axios({
+    url: `/platform-tenants/${id}/private-domain/deploy`,
     method: 'post',
     data
   })

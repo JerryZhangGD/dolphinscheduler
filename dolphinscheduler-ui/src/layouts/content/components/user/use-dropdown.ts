@@ -45,6 +45,7 @@ export function useDropDown() {
       userStore.setUserInfo({})
       userStore.setBaseResDir('')
       userStore.setPlatformTenantId(null)
+      userStore.setDomainMode('public')
       cookies.remove('sessionId')
 
       router.push({ path: '/login' })

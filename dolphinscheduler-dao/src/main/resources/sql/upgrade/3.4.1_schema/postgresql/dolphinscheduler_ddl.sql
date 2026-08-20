@@ -52,6 +52,18 @@ INSERT INTO t_ds_platform_tenant(id, tenant_code, tenant_name, description, crea
 VALUES (1, 'default', 'default', 'default platform tenant', now(), now())
 ON CONFLICT (tenant_code) DO NOTHING;
 
+ALTER TABLE t_ds_platform_tenant ADD COLUMN IF NOT EXISTS private_admin_token varchar(255) DEFAULT NULL;
+ALTER TABLE t_ds_platform_tenant ADD COLUMN IF NOT EXISTS private_deploy_ip varchar(255) DEFAULT NULL;
+ALTER TABLE t_ds_platform_tenant ADD COLUMN IF NOT EXISTS private_db_type varchar(64) DEFAULT NULL;
+ALTER TABLE t_ds_platform_tenant ADD COLUMN IF NOT EXISTS private_db_host varchar(255) DEFAULT NULL;
+ALTER TABLE t_ds_platform_tenant ADD COLUMN IF NOT EXISTS private_db_port varchar(32) DEFAULT NULL;
+ALTER TABLE t_ds_platform_tenant ADD COLUMN IF NOT EXISTS private_db_name varchar(255) DEFAULT NULL;
+ALTER TABLE t_ds_platform_tenant ADD COLUMN IF NOT EXISTS private_db_user varchar(255) DEFAULT NULL;
+ALTER TABLE t_ds_platform_tenant ADD COLUMN IF NOT EXISTS private_db_url varchar(1024) DEFAULT NULL;
+ALTER TABLE t_ds_platform_tenant ADD COLUMN IF NOT EXISTS private_deploy_path varchar(512) DEFAULT NULL;
+ALTER TABLE t_ds_platform_tenant ADD COLUMN IF NOT EXISTS private_process_check_command text DEFAULT NULL;
+ALTER TABLE t_ds_platform_tenant ADD COLUMN IF NOT EXISTS private_nginx_proxy_path varchar(128) DEFAULT NULL;
+
 INSERT INTO t_ds_platform_tenant_user(platform_tenant_id, user_id, admin_flag, create_time, update_time)
 SELECT 1, id, CASE WHEN user_type = 0 THEN 1 ELSE 0 END, now(), now() FROM t_ds_user
 ON CONFLICT (platform_tenant_id, user_id) DO NOTHING;

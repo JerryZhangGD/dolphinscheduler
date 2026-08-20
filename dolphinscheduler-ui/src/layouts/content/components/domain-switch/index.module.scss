@@ -15,17 +15,33 @@
  * limitations under the License.
  */
 
-import type { UserInfoRes } from '@/service/modules/users/types'
-
-type DomainMode = 'public' | 'private'
-
-interface UserState {
-  sessionId: string
-  securityConfigType: string
-  baseResDir: string
-  platformTenantId: number | null
-  domainMode: DomainMode
-  userInfo: UserInfoRes | {}
+.switcher {
+  width: 112px;
+  margin-right: 8px;
 }
 
-export { UserState, DomainMode }
+.deployModal {
+  width: min(860px, calc(100vw - 32px));
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 16px;
+}
+
+.fullRow {
+  grid-column: 1 / -1;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+@media screen and (max-width: 720px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+}

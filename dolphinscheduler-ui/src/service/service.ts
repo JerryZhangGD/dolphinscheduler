@@ -28,6 +28,11 @@ import _ from 'lodash'
 import cookies from 'js-cookie'
 import router from '@/router'
 import utils from '@/utils'
+import {
+  getPrivateDomainToken,
+  isPrivateDomainRequest,
+  resolveDomainPath
+} from '@/service/domain'
 
 const userStore = useUserStore()
 const uiSettingStore = useUISettingStore()
@@ -48,8 +53,8 @@ const handleError = (res: AxiosResponse<any, any>) => {
 const baseRequestConfig: AxiosRequestConfig = {
   baseURL:
     import.meta.env.MODE === 'development'
-      ? '/dolphinscheduler'
-      : import.meta.env.VITE_APP_PROD_WEB_URL + '/dolphinscheduler',
+      ? ''
+      : import.meta.env.VITE_APP_PROD_WEB_URL,
   timeout: uiSettingStore.getApiTimer ? uiSettingStore.getApiTimer : 20000,
   transformRequest: (params) => {
     if (_.isPlainObject(params)) {
@@ -77,6 +82,7 @@ const err = (error: unknown): Promise<never> => {
     userStore.setUserInfo({})
     userStore.setBaseResDir('')
     userStore.setPlatformTenantId(null)
+    userStore.setDomainMode('public')
     router.push({ path: '/login' })
   }
 
@@ -84,10 +90,24 @@ const err = (error: unknown): Promise<never> => {
 }
 
 service.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  config.headers.set('sessionId', userStore.getSessionId)
-  if (userStore.getPlatformTenantId) {
-    config.headers.set('platformTenantId', userStore.getPlatformTenantId)
+  const isPrivateRequest = isPrivateDomainRequest(config.url)
+
+  config.url = resolveDomainPath(config.url)
+
+  if (isPrivateRequest) {
+    config.headers.delete('sessionId')
+    config.headers.delete('platformTenantId')
+    config.headers.set('token', getPrivateDomainToken())
+  } else {
+    config.headers.delete('token')
+    config.headers.set('sessionId', userStore.getSessionId)
+    if (userStore.getPlatformTenantId) {
+      config.headers.set('platformTenantId', userStore.getPlatformTenantId)
+    } else {
+      config.headers.delete('platformTenantId')
+    }
   }
+
   const language = cookies.get('language')
   if (language) config.headers.set('language', language)
 

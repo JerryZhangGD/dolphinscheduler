@@ -15,17 +15,26 @@
  * limitations under the License.
  */
 
-import type { UserInfoRes } from '@/service/modules/users/types'
+package org.apache.dolphinscheduler.api.dto;
 
-type DomainMode = 'public' | 'private'
+import org.apache.dolphinscheduler.dao.entity.PlatformTenant;
 
-interface UserState {
-  sessionId: string
-  securityConfigType: string
-  baseResDir: string
-  platformTenantId: number | null
-  domainMode: DomainMode
-  userInfo: UserInfoRes | {}
+import lombok.Builder;
+import lombok.Data;
+
+@Data
+@Builder
+public class PrivateDomainDeployResult {
+
+    private boolean available;
+
+    private String message;
+
+    private String commandOutput;
+
+    private String privateAdminToken;
+
+    private PrivateDomainStatus status;
+
+    private PlatformTenant platformTenant;
 }
-
-export { UserState, DomainMode }

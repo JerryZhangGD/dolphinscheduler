@@ -1044,6 +1044,17 @@ CREATE TABLE t_ds_platform_tenant
     tenant_code varchar(64) NOT NULL,
     tenant_name varchar(64) NOT NULL,
     description varchar(255) DEFAULT NULL,
+    private_admin_token varchar(255) DEFAULT NULL,
+    private_deploy_ip varchar(255) DEFAULT NULL,
+    private_db_type varchar(64) DEFAULT NULL,
+    private_db_host varchar(255) DEFAULT NULL,
+    private_db_port varchar(32) DEFAULT NULL,
+    private_db_name varchar(255) DEFAULT NULL,
+    private_db_user varchar(255) DEFAULT NULL,
+    private_db_url varchar(1024) DEFAULT NULL,
+    private_deploy_path varchar(512) DEFAULT NULL,
+    private_process_check_command text DEFAULT NULL,
+    private_nginx_proxy_path varchar(128) DEFAULT NULL,
     create_time datetime DEFAULT NULL,
     update_time datetime DEFAULT NULL,
     PRIMARY KEY (id),
@@ -1136,7 +1147,8 @@ VALUES ('1', 'admin', '7ad2410b2f4c074479a8937a28a22b8f', '0', 'xxx@qq.com', '',
         '2018-10-24 17:40:22', null, 1, null);
 
 INSERT INTO t_ds_platform_tenant
-VALUES ('1', 'default', 'default', 'default platform tenant', '2018-03-27 15:48:50', '2018-10-24 17:40:22');
+VALUES ('1', 'default', 'default', 'default platform tenant', null, null, null, null, null, null, null, null, null, null,
+        null, '2018-03-27 15:48:50', '2018-10-24 17:40:22');
 
 INSERT INTO t_ds_platform_tenant_user
 VALUES ('1', '1', '1', '1', '2018-03-27 15:48:50', '2018-10-24 17:40:22');

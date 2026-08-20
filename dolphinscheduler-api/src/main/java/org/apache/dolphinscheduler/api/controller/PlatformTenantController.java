@@ -24,6 +24,9 @@ import static org.apache.dolphinscheduler.api.enums.Status.QUERY_TENANT_LIST_PAG
 import static org.apache.dolphinscheduler.api.enums.Status.UPDATE_TENANT_ERROR;
 import static org.apache.dolphinscheduler.api.enums.Status.VERIFY_OS_TENANT_CODE_ERROR;
 
+import org.apache.dolphinscheduler.api.dto.PrivateDomainDeployRequest;
+import org.apache.dolphinscheduler.api.dto.PrivateDomainDeployResult;
+import org.apache.dolphinscheduler.api.dto.PrivateDomainStatus;
 import org.apache.dolphinscheduler.api.exceptions.ApiException;
 import org.apache.dolphinscheduler.api.service.PlatformTenantService;
 import org.apache.dolphinscheduler.api.utils.PageInfo;
@@ -134,6 +137,25 @@ public class PlatformTenantController extends BaseController {
                                                @RequestParam(value = "platformTenantId") int platformTenantId,
                                                HttpServletRequest request) {
         return Result.success(platformTenantService.switchTenant(loginUser, getSessionId(request), platformTenantId));
+    }
+
+    @GetMapping(value = "/{id}/private-domain/status")
+    @ResponseStatus(HttpStatus.OK)
+    @ApiException(QUERY_TENANT_LIST_ERROR)
+    public Result<PrivateDomainStatus> queryPrivateDomainStatus(@Parameter(hidden = true) @RequestAttribute(value = Constants.SESSION_USER) User loginUser,
+                                                                @PathVariable(value = "id") int id,
+                                                                HttpServletRequest request) {
+        return Result.success(platformTenantService.queryPrivateDomainStatus(loginUser, id, request));
+    }
+
+    @PostMapping(value = "/{id}/private-domain/deploy")
+    @ResponseStatus(HttpStatus.OK)
+    @ApiException(UPDATE_TENANT_ERROR)
+    public Result<PrivateDomainDeployResult> deployPrivateDomain(@Parameter(hidden = true) @RequestAttribute(value = Constants.SESSION_USER) User loginUser,
+                                                                 @PathVariable(value = "id") int id,
+                                                                 PrivateDomainDeployRequest deployRequest,
+                                                                 HttpServletRequest request) {
+        return Result.success(platformTenantService.deployPrivateDomain(loginUser, id, deployRequest, request));
     }
 
     private String getSessionId(HttpServletRequest request) {

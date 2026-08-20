@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+import type { PlatformTenant } from '@/service/modules/users/types'
+
 interface ListReq {
   pageNo: number
   pageSize: number
@@ -39,10 +41,52 @@ interface SwitchPlatformTenantReq {
   platformTenantId: number
 }
 
+interface PrivateDomainStatus {
+  available: boolean
+  tenantCode: string
+  proxyPath: string
+  probeUrl: string
+  message: string
+  platformTenant: PlatformTenant
+}
+
+interface PrivateDomainDeployReq {
+  sshHost: string
+  sshPort?: number
+  sshUser: string
+  sshPassword?: string
+  sshPrivateKey?: string
+  deployIp: string
+  dbType: string
+  dbHost?: string
+  dbPort?: string
+  dbName?: string
+  dbUser?: string
+  dbPassword?: string
+  dbUrl?: string
+  deployPath?: string
+  processCheckCommand?: string
+  deployCommand: string
+  nginxConfigCommand?: string
+  nginxReloadCommand?: string
+}
+
+interface PrivateDomainDeployResult {
+  available: boolean
+  message: string
+  commandOutput?: string
+  privateAdminToken?: string
+  status: PrivateDomainStatus
+  platformTenant: PlatformTenant
+}
+
 export {
   ListReq,
   PlatformTenantCodeReq,
   PlatformTenantReq,
   IdReq,
-  SwitchPlatformTenantReq
+  SwitchPlatformTenantReq,
+  PrivateDomainStatus,
+  PrivateDomainDeployReq,
+  PrivateDomainDeployResult
 }
