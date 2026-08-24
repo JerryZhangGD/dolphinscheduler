@@ -44,6 +44,8 @@ public class PlatformTenant {
 
     private String privateDeployIp;
 
+    private String privateBackendPort;
+
     private String privateDbType;
 
     private String privateDbHost;

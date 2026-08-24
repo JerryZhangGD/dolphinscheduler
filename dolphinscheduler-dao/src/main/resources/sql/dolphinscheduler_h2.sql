@@ -1046,6 +1046,7 @@ CREATE TABLE t_ds_platform_tenant
     description varchar(255) DEFAULT NULL,
     private_admin_token varchar(255) DEFAULT NULL,
     private_deploy_ip varchar(255) DEFAULT NULL,
+    private_backend_port varchar(32) DEFAULT NULL,
     private_db_type varchar(64) DEFAULT NULL,
     private_db_host varchar(255) DEFAULT NULL,
     private_db_port varchar(32) DEFAULT NULL,
@@ -1148,7 +1149,7 @@ VALUES ('1', 'admin', '7ad2410b2f4c074479a8937a28a22b8f', '0', 'xxx@qq.com', '',
 
 INSERT INTO t_ds_platform_tenant
 VALUES ('1', 'default', 'default', 'default platform tenant', null, null, null, null, null, null, null, null, null, null,
-        null, '2018-03-27 15:48:50', '2018-10-24 17:40:22');
+        null, null, '2018-03-27 15:48:50', '2018-10-24 17:40:22');
 
 INSERT INTO t_ds_platform_tenant_user
 VALUES ('1', '1', '1', '1', '2018-03-27 15:48:50', '2018-10-24 17:40:22');

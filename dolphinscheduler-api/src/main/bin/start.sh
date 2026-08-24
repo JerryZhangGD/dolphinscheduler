@@ -44,6 +44,15 @@ fi
 echo "JAVA_HOME=${JAVA_HOME}"
 echo "JAVA_OPTS=${JAVA_OPTS}"
 
+function start_nginx_proxy() {
+  local nginx_control="$DOLPHINSCHEDULER_HOME/bin/nginx-control.sh"
+  if [ -f "$nginx_control" ]; then
+    /bin/bash "$nginx_control" start || echo "Start nginx proxy failed, continue starting api-server."
+  fi
+}
+
+start_nginx_proxy
+
 MODULES_PATH=(
 api-server
 )

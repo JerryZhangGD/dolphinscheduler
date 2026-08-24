@@ -43,6 +43,11 @@ export default defineConfig({
   },
   server: {
     proxy: {
+      '/public': {
+        target: loadEnv('development', './').VITE_APP_DEV_WEB_URL,
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/public/, '/dolphinscheduler')
+      },
       '/dolphinscheduler': {
         target: loadEnv('development', './').VITE_APP_DEV_WEB_URL,
         changeOrigin: true

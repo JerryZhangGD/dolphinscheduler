@@ -56,8 +56,11 @@ interface PrivateDomainDeployReq {
   sshUser: string
   sshPassword?: string
   sshPrivateKey?: string
-  deployIp: string
-  dbType: string
+  privateIp: string
+  privatePort: string
+  privateAdminToken: string
+  deployIp?: string
+  dbType?: string
   dbHost?: string
   dbPort?: string
   dbName?: string
@@ -66,8 +69,9 @@ interface PrivateDomainDeployReq {
   dbUrl?: string
   deployPath?: string
   processCheckCommand?: string
-  deployCommand: string
+  deployCommand?: string
   nginxConfigCommand?: string
+  nginxConfigFile?: string
   nginxReloadCommand?: string
 }
 

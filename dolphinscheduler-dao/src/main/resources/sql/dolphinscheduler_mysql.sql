@@ -1045,6 +1045,7 @@ CREATE TABLE `t_ds_platform_tenant` (
   `description` varchar(255) DEFAULT NULL COMMENT 'description',
   `private_admin_token` varchar(255) DEFAULT NULL COMMENT 'private domain admin token',
   `private_deploy_ip` varchar(255) DEFAULT NULL COMMENT 'private domain deploy ip',
+  `private_backend_port` varchar(32) DEFAULT NULL COMMENT 'private domain backend port',
   `private_db_type` varchar(64) DEFAULT NULL COMMENT 'private domain database type',
   `private_db_host` varchar(255) DEFAULT NULL COMMENT 'private domain database host',
   `private_db_port` varchar(32) DEFAULT NULL COMMENT 'private domain database port',

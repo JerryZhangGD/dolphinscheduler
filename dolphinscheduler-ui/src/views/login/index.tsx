@@ -208,7 +208,7 @@ const login = defineComponent({
               )
             })}
             {this.oidcProviders?.map((e: OidcProvider) => {
-              const authUrl = `/dolphinscheduler/oauth2/authorization/${e.id}`
+              const authUrl = `/public/oauth2/authorization/${e.id}`
               return (
                 <a href={authUrl} class={styles['oidc-provider-link']}>
                   <NButton block class={styles['oidc-provider-btn']}>

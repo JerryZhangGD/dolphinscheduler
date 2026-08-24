@@ -129,6 +129,7 @@ interface PlatformTenant {
   description?: string
   privateAdminToken?: string
   privateDeployIp?: string
+  privateBackendPort?: string
   privateDbType?: string
   privateDbHost?: string
   privateDbPort?: string

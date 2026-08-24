@@ -49,7 +49,8 @@ ADD COLUMN `private_admin_token` varchar(255) DEFAULT NULL COMMENT 'private doma
 
 ALTER TABLE `t_ds_platform_tenant`
 ADD COLUMN `private_deploy_ip` varchar(255) DEFAULT NULL COMMENT 'private domain deploy ip' AFTER `private_admin_token`,
-ADD COLUMN `private_db_type` varchar(64) DEFAULT NULL COMMENT 'private domain database type' AFTER `private_deploy_ip`,
+ADD COLUMN `private_backend_port` varchar(32) DEFAULT NULL COMMENT 'private domain backend port' AFTER `private_deploy_ip`,
+ADD COLUMN `private_db_type` varchar(64) DEFAULT NULL COMMENT 'private domain database type' AFTER `private_backend_port`,
 ADD COLUMN `private_db_host` varchar(255) DEFAULT NULL COMMENT 'private domain database host' AFTER `private_db_type`,
 ADD COLUMN `private_db_port` varchar(32) DEFAULT NULL COMMENT 'private domain database port' AFTER `private_db_host`,
 ADD COLUMN `private_db_name` varchar(255) DEFAULT NULL COMMENT 'private domain database name' AFTER `private_db_port`,

@@ -23,6 +23,7 @@ const ORIGINAL_API_PREFIX = '/dolphinscheduler'
 
 const userRelatedPathPrefixes = [
   '/login',
+  '/oauth2',
   '/oauth2-provider',
   '/oidc-providers',
   '/cookies',
@@ -42,6 +43,23 @@ const normalizePath = (url?: string) => {
 
 const getPathOnly = (url: string) => normalizePath(url).split('?')[0]
 
+const stripKnownApiPrefix = (path: string) => {
+  if (path === ORIGINAL_API_PREFIX || path === PUBLIC_DOMAIN_PREFIX) return ''
+  if (path.startsWith(`${ORIGINAL_API_PREFIX}/`)) {
+    return path.substring(ORIGINAL_API_PREFIX.length)
+  }
+  if (path.startsWith(`${PUBLIC_DOMAIN_PREFIX}/`)) {
+    return path.substring(PUBLIC_DOMAIN_PREFIX.length)
+  }
+  return path
+}
+
+const withApiPrefix = (prefix: string, path: string) =>
+  path ? `${prefix}${path}` : prefix
+
+const toPublicDomainPath = (path: string) =>
+  withApiPrefix(PUBLIC_DOMAIN_PREFIX, stripKnownApiPrefix(path))
+
 const getCurrentPlatformTenant = (): PlatformTenant | undefined => {
   const userStore = useUserStore()
   const userInfo = userStore.getUserInfo as UserInfoRes
@@ -59,7 +77,7 @@ const getPrivateDomainPrefix = () => {
 }
 
 export const isUserRelatedRequest = (url?: string) => {
-  const path = getPathOnly(url || '')
+  const path = stripKnownApiPrefix(getPathOnly(url || ''))
   if (!path || isAbsoluteUrl(path)) return false
 
   return userRelatedPathPrefixes.some(
@@ -86,31 +104,22 @@ export const resolveDomainPath = (url?: string) => {
   if (!url || isAbsoluteUrl(url)) return url
 
   const normalizedUrl = normalizePath(url)
-  if (isUserRelatedRequest(url)) {
-    if (
-      normalizedUrl === ORIGINAL_API_PREFIX ||
-      normalizedUrl.startsWith(`${ORIGINAL_API_PREFIX}/`)
-    ) {
-      return normalizedUrl
-    }
-    return `${ORIGINAL_API_PREFIX}${normalizedUrl}`
-  }
+  if (isUserRelatedRequest(url)) return toPublicDomainPath(normalizedUrl)
 
   const userStore = useUserStore()
-  const domainPrefix =
-    userStore.getDomainMode === 'private' && getPrivateDomainToken()
-      ? getPrivateDomainPrefix()
-      : PUBLIC_DOMAIN_PREFIX
+  if (userStore.getDomainMode !== 'private' || !getPrivateDomainToken()) {
+    return toPublicDomainPath(normalizedUrl)
+  }
 
-  if (!domainPrefix) return normalizedUrl
+  const domainPrefix = getPrivateDomainPrefix()
+  if (!domainPrefix) return toPublicDomainPath(normalizedUrl)
 
   if (
     normalizedUrl === domainPrefix ||
-    normalizedUrl.startsWith(`${domainPrefix}/`) ||
-    normalizedUrl.startsWith(`${PUBLIC_DOMAIN_PREFIX}/`)
+    normalizedUrl.startsWith(`${domainPrefix}/`)
   ) {
     return normalizedUrl
   }
 
-  return `${domainPrefix}${normalizedUrl}`
+  return withApiPrefix(domainPrefix, stripKnownApiPrefix(normalizedUrl))
 }

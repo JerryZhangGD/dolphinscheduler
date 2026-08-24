@@ -29,15 +29,14 @@ import org.apache.dolphinscheduler.api.utils.RegexUtils;
 import org.apache.dolphinscheduler.common.constants.Constants;
 import org.apache.dolphinscheduler.common.enums.UserType;
 import org.apache.dolphinscheduler.common.utils.CodeGenerateUtils;
-import org.apache.dolphinscheduler.common.utils.EncryptionUtils;
 import org.apache.dolphinscheduler.dao.entity.PlatformTenant;
 import org.apache.dolphinscheduler.dao.entity.PlatformTenantUser;
 import org.apache.dolphinscheduler.dao.entity.Project;
 import org.apache.dolphinscheduler.dao.entity.Session;
 import org.apache.dolphinscheduler.dao.entity.User;
+import org.apache.dolphinscheduler.dao.repository.DataSourceDao;
 import org.apache.dolphinscheduler.dao.repository.PlatformTenantDao;
 import org.apache.dolphinscheduler.dao.repository.PlatformTenantUserDao;
-import org.apache.dolphinscheduler.dao.repository.DataSourceDao;
 import org.apache.dolphinscheduler.dao.repository.ProjectDao;
 import org.apache.dolphinscheduler.dao.repository.SessionDao;
 import org.apache.dolphinscheduler.dao.repository.UserDao;
@@ -64,13 +63,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import javax.servlet.http.HttpServletRequest;
 
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
@@ -79,10 +80,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
 
 @Service
 @Slf4j
@@ -100,6 +97,9 @@ public class PlatformTenantServiceImpl extends BaseServiceImpl implements Platfo
 
     private static final String DEFAULT_PRIVATE_DOMAIN_PROCESS_CHECK_COMMAND =
             "ps -ef | grep -E \"ApiApplicationServer|MasterServer|WorkerServer|AlertServer|StandaloneServer\" | grep -v grep";
+
+    private static final String DEFAULT_NGINX_RELOAD_COMMAND =
+            "/bin/bash /opt/dolphinscheduler/bin/nginx-control.sh reload";
 
     @Autowired
     private PlatformTenantDao platformTenantDao;
@@ -208,7 +208,8 @@ public class PlatformTenantServiceImpl extends BaseServiceImpl implements Platfo
     }
 
     @Override
-    public PageInfo<PlatformTenant> queryTenantList(User loginUser, String searchVal, Integer pageNo, Integer pageSize) {
+    public PageInfo<PlatformTenant> queryTenantList(User loginUser, String searchVal, Integer pageNo,
+                                                    Integer pageSize) {
         checkAdmin(loginUser);
         Page<PlatformTenant> page = new Page<>(pageNo, pageSize);
         IPage<PlatformTenant> tenantPage = platformTenantDao.queryTenantPaging(page, searchVal);
@@ -263,7 +264,7 @@ public class PlatformTenantServiceImpl extends BaseServiceImpl implements Platfo
         checkPrivateDomainManagePermission(loginUser, tenant.getId());
         checkPrivateDomainDeployRequest(deployRequest);
 
-        String privateAdminToken = generatePrivateAdminToken(tenant.getTenantCode());
+        String privateAdminToken = resolvePrivateAdminToken(tenant, deployRequest);
         fillPrivateDomainDeployment(tenant, deployRequest, privateAdminToken);
 
         String commandOutput = executePrivateDomainDeployCommands(tenant, deployRequest);
@@ -303,7 +304,8 @@ public class PlatformTenantServiceImpl extends BaseServiceImpl implements Platfo
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, Constants.PLATFORM_TENANT_ID);
         }
 
-        Set<Integer> distinctTenantIds = platformTenantIds.stream().filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<Integer> distinctTenantIds =
+                platformTenantIds.stream().filter(Objects::nonNull).collect(Collectors.toSet());
         for (Integer platformTenantId : distinctTenantIds) {
             if (platformTenantDao.queryById(platformTenantId) == null) {
                 throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, platformTenantId);
@@ -502,7 +504,8 @@ public class PlatformTenantServiceImpl extends BaseServiceImpl implements Platfo
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, platformTenantId);
         }
         if (loginUser.getUserType() != UserType.ADMIN_USER
-                && platformTenantUserDao.queryByUserIdAndPlatformTenantId(loginUser.getId(), platformTenantId) == null) {
+                && platformTenantUserDao.queryByUserIdAndPlatformTenantId(loginUser.getId(),
+                        platformTenantId) == null) {
             throw new ServiceException(Status.USER_NO_OPERATION_PERM);
         }
         ensurePrivateDomainDefaults(tenant);
@@ -510,7 +513,8 @@ public class PlatformTenantServiceImpl extends BaseServiceImpl implements Platfo
     }
 
     private void checkPrivateDomainManagePermission(User loginUser, int platformTenantId) {
-        if (loginUser.getUserType() == UserType.ADMIN_USER || isPlatformTenantAdmin(loginUser.getId(), platformTenantId)) {
+        if (loginUser.getUserType() == UserType.ADMIN_USER
+                || isPlatformTenantAdmin(loginUser.getId(), platformTenantId)) {
             return;
         }
         throw new ServiceException(Status.USER_NO_OPERATION_PERM);
@@ -613,29 +617,69 @@ public class PlatformTenantServiceImpl extends BaseServiceImpl implements Platfo
         if (deployRequest == null
                 || StringUtils.isBlank(deployRequest.getSshHost())
                 || StringUtils.isBlank(deployRequest.getSshUser())
-                || StringUtils.isBlank(deployRequest.getDeployIp())
-                || StringUtils.isBlank(deployRequest.getDbType())
-                || StringUtils.isBlank(deployRequest.getDeployCommand())
+                || StringUtils.isBlank(resolvePrivateIp(deployRequest))
+                || StringUtils.isBlank(deployRequest.getPrivatePort())
+                || StringUtils.isBlank(deployRequest.getPrivateAdminToken())
                 || StringUtils.isAllBlank(deployRequest.getSshPassword(), deployRequest.getSshPrivateKey())) {
             throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "private domain deploy params");
         }
-        if (StringUtils.isAllBlank(deployRequest.getDbHost(), deployRequest.getDbUrl())) {
-            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "dbHost or dbUrl");
+        if (!isValidPort(deployRequest.getPrivatePort())) {
+            throw new ServiceException(Status.REQUEST_PARAMS_NOT_VALID_ERROR, "privatePort");
         }
+    }
+
+    private boolean isValidPort(String port) {
+        try {
+            int portValue = Integer.parseInt(StringUtils.trim(port));
+            return portValue > 0 && portValue <= 65535;
+        } catch (NumberFormatException ex) {
+            return false;
+        }
+    }
+
+    private String resolvePrivateIp(PrivateDomainDeployRequest deployRequest) {
+        if (deployRequest == null) {
+            return null;
+        }
+        return StringUtils.trim(StringUtils.defaultIfBlank(deployRequest.getPrivateIp(), deployRequest.getDeployIp()));
+    }
+
+    private String resolvePrivatePort(PrivateDomainDeployRequest deployRequest) {
+        return deployRequest == null ? null : StringUtils.trim(deployRequest.getPrivatePort());
+    }
+
+    private String resolvePrivateAdminToken(PlatformTenant tenant, PrivateDomainDeployRequest deployRequest) {
+        return StringUtils.trim(
+                StringUtils.defaultIfBlank(deployRequest.getPrivateAdminToken(), tenant.getPrivateAdminToken()));
     }
 
     private void fillPrivateDomainDeployment(PlatformTenant tenant,
                                              PrivateDomainDeployRequest deployRequest,
                                              String privateAdminToken) {
         tenant.setPrivateAdminToken(privateAdminToken);
-        tenant.setPrivateDeployIp(deployRequest.getDeployIp());
-        tenant.setPrivateDbType(deployRequest.getDbType());
-        tenant.setPrivateDbHost(deployRequest.getDbHost());
-        tenant.setPrivateDbPort(deployRequest.getDbPort());
-        tenant.setPrivateDbName(deployRequest.getDbName());
-        tenant.setPrivateDbUser(deployRequest.getDbUser());
-        tenant.setPrivateDbUrl(deployRequest.getDbUrl());
-        tenant.setPrivateDeployPath(deployRequest.getDeployPath());
+        tenant.setPrivateDeployIp(resolvePrivateIp(deployRequest));
+        tenant.setPrivateBackendPort(resolvePrivatePort(deployRequest));
+        if (StringUtils.isNotBlank(deployRequest.getDbType())) {
+            tenant.setPrivateDbType(deployRequest.getDbType());
+        }
+        if (StringUtils.isNotBlank(deployRequest.getDbHost())) {
+            tenant.setPrivateDbHost(deployRequest.getDbHost());
+        }
+        if (StringUtils.isNotBlank(deployRequest.getDbPort())) {
+            tenant.setPrivateDbPort(deployRequest.getDbPort());
+        }
+        if (StringUtils.isNotBlank(deployRequest.getDbName())) {
+            tenant.setPrivateDbName(deployRequest.getDbName());
+        }
+        if (StringUtils.isNotBlank(deployRequest.getDbUser())) {
+            tenant.setPrivateDbUser(deployRequest.getDbUser());
+        }
+        if (StringUtils.isNotBlank(deployRequest.getDbUrl())) {
+            tenant.setPrivateDbUrl(deployRequest.getDbUrl());
+        }
+        if (StringUtils.isNotBlank(deployRequest.getDeployPath())) {
+            tenant.setPrivateDeployPath(deployRequest.getDeployPath());
+        }
         tenant.setPrivateProcessCheckCommand(StringUtils.defaultIfBlank(
                 deployRequest.getProcessCheckCommand(),
                 DEFAULT_PRIVATE_DOMAIN_PROCESS_CHECK_COMMAND));
@@ -647,21 +691,23 @@ public class PlatformTenantServiceImpl extends BaseServiceImpl implements Platfo
         try (SshClient sshClient = SshClient.setUpDefaultClient()) {
             sshClient.start();
             try (ClientSession session = createSshSession(sshClient, deployRequest)) {
-                appendCommandOutput(output, "deploy",
-                        runRemoteCommand(session, resolveDeployCommand(deployRequest.getDeployCommand(), tenant,
-                                deployRequest)));
-                if (StringUtils.isNotBlank(deployRequest.getNginxConfigCommand())) {
-                    appendCommandOutput(output, "nginx-config",
-                            runRemoteCommand(session,
-                                    resolveDeployCommand(deployRequest.getNginxConfigCommand(), tenant, deployRequest)));
+                String deployCommand = resolveDeployCommand(deployRequest.getDeployCommand(), tenant, deployRequest);
+                if (StringUtils.isNotBlank(deployCommand)) {
+                    appendCommandOutput(output, "deploy", runRemoteCommand(session, deployCommand));
                 }
-                if (StringUtils.isNotBlank(deployRequest.getNginxReloadCommand())) {
-                    appendCommandOutput(output, "nginx-reload",
-                            runRemoteCommand(session,
-                                    resolveDeployCommand(deployRequest.getNginxReloadCommand(), tenant,
-                                            deployRequest)));
+                String nginxConfigCommand = resolveDeployCommand(StringUtils.defaultIfBlank(
+                        deployRequest.getNginxConfigCommand(),
+                        buildDefaultNginxConfigCommand(tenant, deployRequest)), tenant, deployRequest);
+                appendCommandOutput(output, "nginx-config", runRemoteCommand(session, nginxConfigCommand));
+
+                String nginxReloadCommand = resolveDeployCommand(StringUtils.defaultIfBlank(
+                        deployRequest.getNginxReloadCommand(), DEFAULT_NGINX_RELOAD_COMMAND), tenant, deployRequest);
+                if (StringUtils.isNotBlank(nginxReloadCommand)) {
+                    appendCommandOutput(output, "nginx-reload", runRemoteCommand(session, nginxReloadCommand));
                 }
-                if (StringUtils.isNotBlank(tenant.getPrivateProcessCheckCommand())) {
+
+                if (StringUtils.isNotBlank(deployCommand)
+                        && StringUtils.isNotBlank(tenant.getPrivateProcessCheckCommand())) {
                     appendCommandOutput(output, "process-check",
                             runRemoteCommand(session,
                                     resolveDeployCommand(tenant.getPrivateProcessCheckCommand(), tenant,
@@ -674,8 +720,54 @@ public class PlatformTenantServiceImpl extends BaseServiceImpl implements Platfo
         return truncateCommandOutput(output.toString());
     }
 
-    private ClientSession createSshSession(SshClient sshClient, PrivateDomainDeployRequest deployRequest)
-            throws Exception {
+    private String buildDefaultNginxConfigCommand(PlatformTenant tenant, PrivateDomainDeployRequest deployRequest) {
+        String nginxConfigFile = resolveNginxConfigFile(tenant, deployRequest);
+        String nginxConfigDir = StringUtils.substringBeforeLast(nginxConfigFile, "/");
+        if (StringUtils.isBlank(nginxConfigDir)) {
+            nginxConfigDir = ".";
+        }
+        return "mkdir -p " + quoteShell(nginxConfigDir)
+                + " && cat > " + quoteShell(nginxConfigFile) + " <<'EOF'\n"
+                + renderPrivateDomainNginxLocation(tenant, deployRequest)
+                + "\nEOF";
+    }
+
+    private String renderPrivateDomainNginxLocation(PlatformTenant tenant,
+                                                    PrivateDomainDeployRequest deployRequest) {
+        String proxyPath = normalizeProxyPath(StringUtils.defaultIfBlank(
+                tenant.getPrivateNginxProxyPath(),
+                defaultPrivateNginxProxyPath(tenant.getTenantCode())));
+        String locationPath = proxyPath + "/";
+        String privateProxyPass = buildPrivateProxyPass(deployRequest);
+        return "location " + locationPath + " {\n"
+                + "    proxy_http_version 1.1;\n"
+                + "    proxy_set_header Host $host;\n"
+                + "    proxy_set_header X-Real-IP $remote_addr;\n"
+                + "    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;\n"
+                + "    proxy_set_header X-Forwarded-Proto $scheme;\n"
+                + "    proxy_set_header X-Forwarded-Host $host;\n"
+                + "    proxy_set_header token $http_token;\n"
+                + "    proxy_pass " + privateProxyPass + ";\n"
+                + "}";
+    }
+
+    private String resolveNginxConfigFile(PlatformTenant tenant, PrivateDomainDeployRequest deployRequest) {
+        return StringUtils.defaultIfBlank(
+                deployRequest.getNginxConfigFile(),
+                "/opt/dolphinscheduler/conf/nginx/tenants/" + tenant.getTenantCode() + ".conf");
+    }
+
+    private String buildPrivateProxyPass(PrivateDomainDeployRequest deployRequest) {
+        return "http://" + resolvePrivateIp(deployRequest) + ":" + resolvePrivatePort(deployRequest)
+                + "/dolphinscheduler/";
+    }
+
+    private String quoteShell(String value) {
+        return "'" + StringUtils.replace(StringUtils.defaultString(value), "'", "'\"'\"'") + "'";
+    }
+
+    private ClientSession createSshSession(SshClient sshClient,
+                                           PrivateDomainDeployRequest deployRequest) throws Exception {
         int sshPort = deployRequest.getSshPort() == null ? 22 : deployRequest.getSshPort();
         ClientSession session = sshClient.connect(deployRequest.getSshUser(), deployRequest.getSshHost(), sshPort)
                 .verify(PRIVATE_DOMAIN_SSH_CONNECT_TIMEOUT_MS)
@@ -727,7 +819,11 @@ public class PlatformTenantServiceImpl extends BaseServiceImpl implements Platfo
         Map<String, String> variables = new HashMap<>();
         variables.put("tenantCode", tenant.getTenantCode());
         variables.put("privateAdminToken", tenant.getPrivateAdminToken());
-        variables.put("deployIp", deployRequest.getDeployIp());
+        variables.put("deployIp",
+                StringUtils.defaultIfBlank(deployRequest.getDeployIp(), resolvePrivateIp(deployRequest)));
+        variables.put("privateIp", resolvePrivateIp(deployRequest));
+        variables.put("privatePort", resolvePrivatePort(deployRequest));
+        variables.put("privateBackendPort", resolvePrivatePort(deployRequest));
         variables.put("dbType", deployRequest.getDbType());
         variables.put("dbHost", deployRequest.getDbHost());
         variables.put("dbPort", deployRequest.getDbPort());
@@ -737,8 +833,10 @@ public class PlatformTenantServiceImpl extends BaseServiceImpl implements Platfo
         variables.put("dbUrl", deployRequest.getDbUrl());
         variables.put("deployPath", deployRequest.getDeployPath());
         variables.put("nginxProxyPath", tenant.getPrivateNginxProxyPath());
+        variables.put("nginxConfigFile", resolveNginxConfigFile(tenant, deployRequest));
+        variables.put("privateProxyPass", buildPrivateProxyPass(deployRequest));
 
-        String resolvedCommand = command;
+        String resolvedCommand = StringUtils.defaultString(command);
         for (Map.Entry<String, String> entry : variables.entrySet()) {
             resolvedCommand = StringUtils.replace(resolvedCommand, "${" + entry.getKey() + "}",
                     StringUtils.defaultString(entry.getValue()));
@@ -771,10 +869,6 @@ public class PlatformTenantServiceImpl extends BaseServiceImpl implements Platfo
         }
         String normalizedProxyPath = proxyPath.startsWith("/") ? proxyPath : "/" + proxyPath;
         return StringUtils.removeEnd(normalizedProxyPath, "/");
-    }
-
-    private String generatePrivateAdminToken(String tenantCode) {
-        return EncryptionUtils.getMd5(tenantCode + UUID.randomUUID().toString() + System.currentTimeMillis());
     }
 
     private void checkTenantParams(String tenantCode, String tenantName, String description) {

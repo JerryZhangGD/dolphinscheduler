@@ -43,8 +43,8 @@ import type { DomainMode } from '@/store/user/types'
 import type { PlatformTenant, UserInfoRes } from '@/service/modules/users/types'
 import styles from './index.module.scss'
 
-const DEFAULT_PROCESS_CHECK_COMMAND =
-  'ps -ef | grep -E "ApiApplicationServer|MasterServer|WorkerServer|AlertServer|StandaloneServer" | grep -v grep'
+const DEFAULT_NGINX_RELOAD_COMMAND =
+  '/bin/bash /opt/dolphinscheduler/bin/nginx-control.sh reload'
 
 const DomainSwitcher = defineComponent({
   name: 'DomainSwitcher',
@@ -61,19 +61,12 @@ const DomainSwitcher = defineComponent({
       sshUser: '',
       sshPassword: '',
       sshPrivateKey: '',
-      deployIp: '',
-      dbType: 'MYSQL',
-      dbHost: '',
-      dbPort: '3306',
-      dbName: '',
-      dbUser: '',
-      dbPassword: '',
-      dbUrl: '',
-      deployPath: '',
-      processCheckCommand: DEFAULT_PROCESS_CHECK_COMMAND,
-      deployCommand: '',
+      privateIp: '',
+      privatePort: '12345',
+      privateAdminToken: '',
       nginxConfigCommand: '',
-      nginxReloadCommand: 'nginx -s reload'
+      nginxConfigFile: '',
+      nginxReloadCommand: DEFAULT_NGINX_RELOAD_COMMAND
     })
 
     const currentPlatformTenant = computed<PlatformTenant | undefined>(() => {
@@ -139,26 +132,21 @@ const DomainSwitcher = defineComponent({
 
     const resetDeployForm = () => {
       const tenant = currentPlatformTenant.value
+      const tenantConfigFile = tenant?.tenantCode
+        ? `/opt/dolphinscheduler/conf/nginx/tenants/${tenant.tenantCode}.conf`
+        : ''
       Object.assign(deployForm, {
         sshHost: tenant?.privateDeployIp || '',
         sshPort: 22,
         sshUser: '',
         sshPassword: '',
         sshPrivateKey: '',
-        deployIp: tenant?.privateDeployIp || '',
-        dbType: tenant?.privateDbType || 'MYSQL',
-        dbHost: tenant?.privateDbHost || '',
-        dbPort: tenant?.privateDbPort || '3306',
-        dbName: tenant?.privateDbName || '',
-        dbUser: tenant?.privateDbUser || '',
-        dbPassword: '',
-        dbUrl: tenant?.privateDbUrl || '',
-        deployPath: tenant?.privateDeployPath || '',
-        processCheckCommand:
-          tenant?.privateProcessCheckCommand || DEFAULT_PROCESS_CHECK_COMMAND,
-        deployCommand: '',
+        privateIp: tenant?.privateDeployIp || '',
+        privatePort: tenant?.privateBackendPort || '12345',
+        privateAdminToken: tenant?.privateAdminToken || '',
         nginxConfigCommand: '',
-        nginxReloadCommand: 'nginx -s reload'
+        nginxConfigFile: tenantConfigFile,
+        nginxReloadCommand: DEFAULT_NGINX_RELOAD_COMMAND
       })
     }
 
@@ -223,12 +211,12 @@ const DomainSwitcher = defineComponent({
         privateStatus.value = result.status
 
         if (result.available) {
-          window.$message.success('私域部署完成')
+          window.$message.success('私域配置已生效')
           deployModalVisible.value = false
           await enterDomain('private')
           return
         }
-        window.$message.warning('部署命令已执行，私域暂时不可用')
+        window.$message.warning('私域配置已保存，暂时未检测到可用服务')
       } finally {
         deploying.value = false
       }
@@ -294,15 +282,19 @@ const DomainSwitcher = defineComponent({
         >
           <NSpace vertical size='large'>
             <NAlert type='warning' showIcon={false}>
-              当前平台租户的私域后端未响应，请完成部署后再切换。
+              当前平台租户的私域后端未响应，请填写私域接入信息后再切换。
             </NAlert>
             {this.canDeployPrivateDomain ? (
               <NForm labelPlacement='top'>
                 <div class={styles.formGrid}>
-                  {renderTextInput('SSH 地址', this.deployForm.sshHost, (v) => {
-                    this.deployForm.sshHost = v
-                  })}
-                  <NFormItem label='SSH 端口'>
+                  {renderTextInput(
+                    'Nginx SSH 地址',
+                    this.deployForm.sshHost,
+                    (v) => {
+                      this.deployForm.sshHost = v
+                    }
+                  )}
+                  <NFormItem label='Nginx SSH 端口'>
                     <NInputNumber
                       value={this.deployForm.sshPort}
                       min={1}
@@ -312,101 +304,76 @@ const DomainSwitcher = defineComponent({
                       }}
                     />
                   </NFormItem>
-                  {renderTextInput('SSH 用户', this.deployForm.sshUser, (v) => {
-                    this.deployForm.sshUser = v
-                  })}
                   {renderTextInput(
-                    'SSH 密码',
+                    'Nginx SSH 用户',
+                    this.deployForm.sshUser,
+                    (v) => {
+                      this.deployForm.sshUser = v
+                    }
+                  )}
+                  {renderTextInput(
+                    'Nginx SSH 密码',
                     this.deployForm.sshPassword,
                     (v) => {
                       this.deployForm.sshPassword = v
                     },
                     'password'
                   )}
-                  {renderTextInput('部署 IP', this.deployForm.deployIp, (v) => {
-                    this.deployForm.deployIp = v
-                  })}
                   {renderTextInput(
-                    '数据库类型',
-                    this.deployForm.dbType,
+                    '私域后端 IP',
+                    this.deployForm.privateIp,
                     (v) => {
-                      this.deployForm.dbType = v
+                      this.deployForm.privateIp = v
                     }
                   )}
-                  {renderTextInput('数据库 IP', this.deployForm.dbHost, (v) => {
-                    this.deployForm.dbHost = v
-                  })}
-                  {renderTextInput(
-                    '数据库端口',
-                    this.deployForm.dbPort,
-                    (v) => {
-                      this.deployForm.dbPort = v
-                    }
-                  )}
-                  {renderTextInput('数据库名', this.deployForm.dbName, (v) => {
-                    this.deployForm.dbName = v
-                  })}
-                  {renderTextInput(
-                    '数据库用户',
-                    this.deployForm.dbUser,
-                    (v) => {
-                      this.deployForm.dbUser = v
-                    }
-                  )}
-                  {renderTextInput(
-                    '数据库密码',
-                    this.deployForm.dbPassword,
-                    (v) => {
-                      this.deployForm.dbPassword = v
-                    },
-                    'password'
-                  )}
-                  {renderTextInput(
-                    '部署目录',
-                    this.deployForm.deployPath,
-                    (v) => {
-                      this.deployForm.deployPath = v
-                    }
-                  )}
+                  <NFormItem label='私域后端端口'>
+                    <NInputNumber
+                      value={Number(this.deployForm.privatePort || 12345)}
+                      min={1}
+                      max={65535}
+                      onUpdateValue={(v) => {
+                        this.deployForm.privatePort = String(v || '')
+                      }}
+                    />
+                  </NFormItem>
                   <div class={styles.fullRow}>
                     {renderTextInput(
-                      '数据库连接串',
-                      this.deployForm.dbUrl,
+                      '私域管理员 Token',
+                      this.deployForm.privateAdminToken,
                       (v) => {
-                        this.deployForm.dbUrl = v
+                        this.deployForm.privateAdminToken = v
+                      },
+                      'password'
+                    )}
+                  </div>
+                  <div class={styles.fullRow}>
+                    {renderTextInput(
+                      'Nginx 租户配置文件',
+                      this.deployForm.nginxConfigFile,
+                      (v) => {
+                        this.deployForm.nginxConfigFile = v
                       }
                     )}
                   </div>
                   <div class={styles.fullRow}>
                     {renderTextInput(
-                      '私域进程检查命令',
-                      this.deployForm.processCheckCommand,
+                      'Nginx SSH 私钥',
+                      this.deployForm.sshPrivateKey,
                       (v) => {
-                        this.deployForm.processCheckCommand = v
+                        this.deployForm.sshPrivateKey = v
                       },
                       'textarea'
                     )}
                   </div>
                   <div class={styles.fullRow}>
                     {renderTextInput(
-                      '后端部署命令',
-                      this.deployForm.deployCommand,
-                      (v) => {
-                        this.deployForm.deployCommand = v
-                      },
-                      'textarea',
-                      'cd ${deployPath} && PRIVATE_ADMIN_TOKEN=${privateAdminToken} ./bin/start-all.sh'
-                    )}
-                  </div>
-                  <div class={styles.fullRow}>
-                    {renderTextInput(
-                      'Nginx 配置命令',
+                      '自定义 Nginx 配置命令',
                       this.deployForm.nginxConfigCommand,
                       (v) => {
                         this.deployForm.nginxConfigCommand = v
                       },
                       'textarea',
-                      'cat > /etc/nginx/conf.d/${tenantCode}.conf <<EOF'
+                      '留空时自动生成标准租户转发配置，可使用 ${tenantCode}、${privateIp}、${privatePort}、${nginxConfigFile}'
                     )}
                   </div>
                   <div class={styles.fullRow}>
@@ -419,21 +386,11 @@ const DomainSwitcher = defineComponent({
                       'textarea'
                     )}
                   </div>
-                  <div class={styles.fullRow}>
-                    {renderTextInput(
-                      'SSH 私钥',
-                      this.deployForm.sshPrivateKey,
-                      (v) => {
-                        this.deployForm.sshPrivateKey = v
-                      },
-                      'textarea'
-                    )}
-                  </div>
                 </div>
               </NForm>
             ) : (
               <NAlert type='info' showIcon={false}>
-                当前账号不能部署私域，请联系管理员处理。
+                当前账号不能配置私域，请联系管理员处理。
               </NAlert>
             )}
             <div class={styles.footer}>
@@ -446,7 +403,7 @@ const DomainSwitcher = defineComponent({
                   loading={this.deploying}
                   onClick={this.handleDeploy}
                 >
-                  自动部署
+                  保存并刷新 Nginx
                 </NButton>
               ) : null}
             </div>

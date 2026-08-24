@@ -32,6 +32,12 @@ public class PrivateDomainDeployRequest {
 
     private String sshPrivateKey;
 
+    private String privateIp;
+
+    private String privatePort;
+
+    private String privateAdminToken;
+
     private String deployIp;
 
     private String dbType;
@@ -55,6 +61,8 @@ public class PrivateDomainDeployRequest {
     private String deployCommand;
 
     private String nginxConfigCommand;
+
+    private String nginxConfigFile;
 
     private String nginxReloadCommand;
 }
